@@ -18,12 +18,13 @@
   <h2>Deendayal</h2>
 
   <div>
-    <a href="#home">Home</a>
-    <a href="#about">About</a>
-    <a href="#approach">Approach</a>
-    <a href="#markets">Markets</a>
-    <a href="#contact">Contact</a>
-  </div>
+  <a href="#home">Home</a>
+  <a href="#about">About</a>
+  <a href="#approach">Approach</a>
+  <a href="#markets">Markets</a>
+  <a href="#contact">Contact</a>
+  <a href="#" class="login-link" onclick="openLoginPopup()">Login</a>
+</div>              
 </nav>
 
   <section class="hero" id="home">
@@ -56,6 +57,238 @@ risk management, and disciplined execution in Indian markets.
   Download Resume
 </a>
   </section>
+
+<section class="journal reveal" id="journal">
+  <p class="section-title">Trading Journal</p>
+  <h2>Trade Like a Professional</h2>
+
+  <p class="contact-text">
+    Track your trades, review your psychology, monitor mistakes, and improve your execution quality.
+  </p>
+
+  <div class="journal-dashboard">
+
+    <div class="tracker-card">
+      <h3>Live Tracker</h3>
+
+      <div class="tracker-grid">
+        <div>
+          <span>Total Trades</span>
+          <strong id="liveTotalTrades">0</strong>
+        </div>
+
+        <div>
+          <span>Total P&L</span>
+          <strong id="liveTotalPnl">₹0</strong>
+        </div>
+
+        <div>
+          <span>Win Rate</span>
+          <strong id="liveWinRate">0%</strong>
+        </div>
+
+        <div>
+          <span>Rules Followed</span>
+          <strong id="liveRulesRate">0%</strong>
+        </div>
+      </div>
+    </div>
+
+    <div class="journal-layout">
+
+      <div class="journal-card">
+        <h3>Add Trade</h3>
+
+        <input id="tradeDate" type="date">
+
+        <input id="tradeSymbol" type="text" placeholder="Symbol / Stock">
+        <select id="tradeSegment" onchange="toggleOptionFields()">
+  <option value="">Trade Segment</option>
+  <option value="Equity">Equity / Stock</option>
+  <option value="Futures">Futures</option>
+  <option value="Options">Options</option>
+</select>
+<div id="optionFields" style="display:none;">
+
+  <select id="optionType">
+    <option value="">Option Type</option>
+    <option value="CE">Call / CE</option>
+    <option value="PE">Put / PE</option>
+  </select>
+
+  <input id="strikePrice" type="number" placeholder="Strike Price">
+
+  <input id="expiryDate" type="date" placeholder="Expiry Date">
+
+  <input id="premium" type="number" placeholder="Option Premium">
+
+  <input id="lotSize" type="number" placeholder="Lot Size">
+
+  <input id="lots" type="number" placeholder="Number of Lots">
+
+</div>
+<div id="futureFields" style="display:none;">
+  <input id="futureExpiry" type="date" placeholder="Futures Expiry">
+  <input id="futureLotSize" type="number" placeholder="Lot Size">
+</div>
+
+        <select id="tradeDirection">
+          <option value="">Trade Direction</option>
+          <option value="Long">Long / Buy</option>
+          <option value="Short">Short / Sell</option>
+        </select>
+
+        <input id="tradeEntry" type="number" placeholder="Entry Price">
+
+        <input id="tradeExit" type="number" placeholder="Exit Price">
+
+        <input id="tradeQty" type="number" placeholder="Quantity">
+<select id="entryReason">
+  <option value="">Why did I enter?</option>
+  <option>Level Breakout</option>
+  <option>Retest Confirmation</option>
+  <option>VWAP Support</option>
+  <option>Trendline Break</option>
+  <option>Reversal Candle</option>
+  <option>Volume Confirmation</option>
+  <option>News Based</option>
+  <option>Random Entry</option>
+</select>
+        <select id="tradeSetup">
+          <option value="">Setup Type</option>
+          <option>Breakout</option>
+          <option>Pullback</option>
+          <option>Support/Resistance</option>
+          <option>VWAP Reversal</option>
+          <option>Trend Continuation</option>
+          <option>Random / No Setup</option>
+        </select>
+
+        <select id="tradeMistake">
+          <option value="">Mistake</option>
+          <option>No Mistake</option>
+          <option>FOMO Entry</option>
+          <option>Revenge Trade</option>
+          <option>Early Entry</option>
+          <option>Late Exit</option>
+          <option>Over Trading</option>
+          <option>Ignored Stop Loss</option>
+          <option>Oversized Position</option>
+        </select>
+
+        <label class="check-row">
+          <input id="rulesFollowed" type="checkbox">
+          Rules Followed
+        </label>
+
+        <button onclick="saveTrade()">Save Trade</button>
+      </div>
+
+      <div class="journal-card psychology-card">
+        <h3>Psychology Check</h3>
+
+        <p class="mini-title">Before saving this trade, answer honestly:</p>
+
+        <label>
+          <input id="planCheck" type="checkbox">
+          Did I take this trade according to my plan?
+        </label>
+
+        <label>
+          <input id="slCheck" type="checkbox">
+          Was my stop loss decided before entry?
+        </label>
+
+        <label>
+          <input id="riskCheck" type="checkbox">
+          Was my risk small enough to accept calmly?
+        </label>
+
+        <label>
+          <input id="emotionCheck" type="checkbox">
+          Did I enter without fear, greed, revenge, or FOMO?
+        </label>
+
+        <label>
+          <input id="exitCheck" type="checkbox">
+          Did I exit according to rules, not emotion?
+        </label>
+        <label>
+  <input id="chaseCheck" type="checkbox">
+  Did I avoid chasing the price?
+</label>
+
+<label>
+  <input id="slLogicalCheck" type="checkbox">
+  Was my stop loss logical, not random?
+</label>
+
+<label>
+  <input id="positionSizeCheck" type="checkbox">
+  Was my position size safe?
+</label>
+
+<label>
+  <input id="overtradeCheck" type="checkbox">
+  Did I avoid overtrading?
+</label>
+
+<label>
+  <input id="acceptLossCheck" type="checkbox">
+  Was I ready to accept the loss peacefully?
+</label>
+<select id="tradeQuality">
+  <option value="">Trade Quality</option>
+  <option value="A+">A+ Setup</option>
+  <option value="A">A Setup</option>
+  <option value="B">B Setup</option>
+  <option value="C">C Setup</option>
+  <option value="F">F Setup / Gamble</option>
+</select>
+        <textarea id="psychologyNote" placeholder="What was going on in my mind during this trade?"></textarea>
+
+        <div class="mind-score">
+          Discipline Score:
+          <strong id="disciplineScore">0/5</strong>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="journal-layout">
+
+      <div class="journal-card">
+        <h3>Analytics</h3>
+
+        <p>Total Trades: <span id="totalTrades">0</span></p>
+        <p>Total P&L: ₹<span id="totalPnl">0</span></p>
+        <p>Win Rate: <span id="winRate">0%</span></p>
+        <p>Rules Followed: <span id="rulesRate">0%</span></p>
+        <p>Best Trade: ₹<span id="bestTrade">0</span></p>
+        <p>Worst Trade: ₹<span id="worstTrade">0</span></p>
+        <p>Most Repeated Mistake: <span id="topMistake">None</span></p>
+      </div>
+
+      <div class="journal-card">
+        <h3>Graph</h3>
+
+        <div class="chart-box">
+          <div class="chart-line"></div>
+          <p>Equity Curve Preview</p>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="journal-card">
+      <h3>Trade History</h3>
+      <div id="tradeHistory">
+        <p class="empty-text">No trades added yet.</p>
+      </div>
+    </div>
+
+  </div>
+</section>
 <section class="about reveal" id="about">
   <p class="section-title">About Me</p>
   <h2>Hi, I'm Deendayal</h2>
@@ -170,6 +403,7 @@ risk management, and disciplined execution in Indian markets.
 </form>
 
 </section>
+
 <section class="disclaimer reveal" id="disclaimer">
   <h2>Disclaimer</h2>
   <p>
@@ -180,7 +414,19 @@ risk management, and disciplined execution in Indian markets.
     SEBI-registered advisor before making any investment decisions.
   </p>
 </section>
+<div class="login-popup" id="loginPopup">
+  <div class="login-box">
+    <span class="close-login" onclick="closeLoginPopup()">×</span>
 
+    <h2>Login</h2>
+
+    <input type="email" placeholder="Email">
+    <input type="password" placeholder="Password">
+
+    <button>Login</button>
+    <button>Create Account</button>
+  </div>
+</div>
 <footer>
   © <span id="year"></span> Deendayal | Professional Intraday Trader
   <br><br>
@@ -193,7 +439,193 @@ risk management, and disciplined execution in Indian markets.
   document.getElementById('year').textContent = new Date().getFullYear();
 
   const reveals = document.querySelectorAll('.reveal');
+let trades = [];
 
+function calculateDisciplineScore() {
+  let score = 0;
+
+  if (document.getElementById("planCheck").checked) score++;
+  if (document.getElementById("slCheck").checked) score++;
+  if (document.getElementById("riskCheck").checked) score++;
+  if (document.getElementById("emotionCheck").checked) score++;
+  if (document.getElementById("exitCheck").checked) score++;
+  if (document.getElementById("chaseCheck").checked) score++;
+if (document.getElementById("slLogicalCheck").checked) score++;
+if (document.getElementById("positionSizeCheck").checked) score++;
+if (document.getElementById("overtradeCheck").checked) score++;
+if (document.getElementById("acceptLossCheck").checked) score++;
+
+  document.getElementById("disciplineScore").innerText = score + "/10";
+
+  return score;
+}
+
+["planCheck", "slCheck", "riskCheck", "emotionCheck", "exitCheck", "chaseCheck", "slLogicalCheck", "positionSizeCheck", "overtradeCheck", "acceptLossCheck"].forEach((id) => {
+  document.getElementById(id).addEventListener("change", calculateDisciplineScore);
+});
+function toggleOptionFields() {
+  const segment = document.getElementById("tradeSegment").value;
+
+  if (segment === "Options") {
+    document.getElementById("optionFields").style.display = "block";
+    document.getElementById("futureFields").style.display = "none";
+  }
+
+  else if (segment === "Futures") {
+    document.getElementById("optionFields").style.display = "none";
+    document.getElementById("futureFields").style.display = "block";
+  }
+
+  else {
+    document.getElementById("optionFields").style.display = "none";
+    document.getElementById("futureFields").style.display = "none";
+  }
+}
+function saveTrade() {
+  const entry = Number(document.getElementById("tradeEntry").value);
+  const exit = Number(document.getElementById("tradeExit").value);
+  const qty = Number(document.getElementById("tradeQty").value);
+  const segment = document.getElementById("tradeSegment").value;
+const lotSize = Number(document.getElementById("lotSize")?.value || document.getElementById("futureLotSize")?.value || 0);
+const lots = Number(document.getElementById("lots")?.value || 1);
+  const direction = document.getElementById("tradeDirection").value;
+
+  if (!entry || !exit || !qty || !direction) {
+    alert("Please fill entry, exit, quantity and direction.");
+    return;
+  }
+
+ let finalQty = qty;
+
+if (segment === "Options" || segment === "Futures") {
+  finalQty = lotSize * lots;
+}
+
+let pnl = 0;
+
+if (direction === "Long") {
+  pnl = (exit - entry) * finalQty;
+} else {
+  pnl = (entry - exit) * finalQty;
+}
+
+  const trade = {
+    date: document.getElementById("tradeDate").value,
+    symbol: document.getElementById("tradeSymbol").value,
+    segment: document.getElementById("tradeSegment").value,
+optionType: document.getElementById("optionType")?.value || "",
+strikePrice: document.getElementById("strikePrice")?.value || "",
+expiryDate: document.getElementById("expiryDate")?.value || "",
+premium: document.getElementById("premium")?.value || "",
+lotSize: document.getElementById("lotSize")?.value || "",
+lots: document.getElementById("lots")?.value || "",
+futureExpiry: document.getElementById("futureExpiry")?.value || "",
+futureLotSize: document.getElementById("futureLotSize")?.value || "",
+    direction: direction,
+    entryReason: document.getElementById("entryReason").value,
+    setup: document.getElementById("tradeSetup").value,
+    mistake: document.getElementById("tradeMistake").value || "No Mistake",
+    pnl: pnl,
+    rules: document.getElementById("rulesFollowed").checked,
+    disciplineScore: calculateDisciplineScore(),
+    tradeQuality: document.getElementById("tradeQuality").value,
+    note: document.getElementById("psychologyNote").value
+  };
+
+  trades.push(trade);
+
+  updateDashboard();
+  renderTradeHistory();
+  resetTradeForm();
+  document.getElementById("entryReason").value = "";
+}
+
+function updateDashboard() {
+  const totalTrades = trades.length;
+  const totalPnl = trades.reduce((sum, trade) => sum + trade.pnl, 0);
+  const wins = trades.filter((trade) => trade.pnl > 0).length;
+  const rulesFollowed = trades.filter((trade) => trade.rules).length;
+
+  const winRate = totalTrades ? Math.round((wins / totalTrades) * 100) : 0;
+  const rulesRate = totalTrades ? Math.round((rulesFollowed / totalTrades) * 100) : 0;
+
+  const pnls = trades.map((trade) => trade.pnl);
+  const bestTrade = pnls.length ? Math.max(...pnls) : 0;
+  const worstTrade = pnls.length ? Math.min(...pnls) : 0;
+
+  const mistakeCount = {};
+
+  trades.forEach((trade) => {
+    if (trade.mistake && trade.mistake !== "No Mistake") {
+      mistakeCount[trade.mistake] = (mistakeCount[trade.mistake] || 0) + 1;
+    }
+  });
+
+  let topMistake = "None";
+  let maxCount = 0;
+
+  Object.keys(mistakeCount).forEach((mistake) => {
+    if (mistakeCount[mistake] > maxCount) {
+      maxCount = mistakeCount[mistake];
+      topMistake = mistake;
+    }
+  });
+
+  document.getElementById("liveTotalTrades").innerText = totalTrades;
+  document.getElementById("liveTotalPnl").innerText = "₹" + totalPnl.toFixed(2);
+  document.getElementById("liveWinRate").innerText = winRate + "%";
+  document.getElementById("liveRulesRate").innerText = rulesRate + "%";
+
+  document.getElementById("totalTrades").innerText = totalTrades;
+  document.getElementById("totalPnl").innerText = totalPnl.toFixed(2);
+  document.getElementById("winRate").innerText = winRate + "%";
+  document.getElementById("rulesRate").innerText = rulesRate + "%";
+  document.getElementById("bestTrade").innerText = bestTrade.toFixed(2);
+  document.getElementById("worstTrade").innerText = worstTrade.toFixed(2);
+  document.getElementById("topMistake").innerText = topMistake;
+}
+
+function renderTradeHistory() {
+  const history = document.getElementById("tradeHistory");
+  history.innerHTML = "";
+
+  trades.forEach((trade) => {
+    const pnlClass = trade.pnl >= 0 ? "profit" : "loss";
+
+    history.innerHTML += `
+      <div class="trade-row">
+        <span>${trade.symbol || "N/A"} | ${trade.segment || "N/A"} | ${trade.direction}</span>
+        <span>${trade.setup || "No Setup"}</span>
+        <strong class="${pnlClass}">₹${trade.pnl.toFixed(2)}</strong>
+      </div>
+    `;
+  });
+}
+
+function resetTradeForm() {
+  document.getElementById("tradeDate").value = "";
+  document.getElementById("tradeSymbol").value = "";
+  document.getElementById("tradeDirection").value = "";
+  document.getElementById("tradeEntry").value = "";
+  document.getElementById("tradeExit").value = "";
+  document.getElementById("tradeQty").value = "";
+  document.getElementById("tradeSetup").value = "";
+  document.getElementById("tradeMistake").value = "";
+  document.getElementById("rulesFollowed").checked = false;
+  document.getElementById("planCheck").checked = false;
+  document.getElementById("slCheck").checked = false;
+  document.getElementById("riskCheck").checked = false;
+  document.getElementById("emotionCheck").checked = false;
+  document.getElementById("exitCheck").checked = false;
+  document.getElementById("chaseCheck").checked = false;
+document.getElementById("slLogicalCheck").checked = false;
+document.getElementById("positionSizeCheck").checked = false;
+document.getElementById("overtradeCheck").checked = false;
+document.getElementById("acceptLossCheck").checked = false;
+document.getElementById("tradeQuality").value = "";
+  document.getElementById("psychologyNote").value = "";
+  calculateDisciplineScore();
+}
   function revealSections() {
     reveals.forEach((section) => {
       const sectionTop = section.getBoundingClientRect().top;
@@ -203,6 +635,14 @@ risk management, and disciplined execution in Indian markets.
         section.classList.add('active');
       }
     });
+  }
+
+  function openLoginPopup() {
+    document.getElementById("loginPopup").style.display = "flex";
+  }
+
+  function closeLoginPopup() {
+    document.getElementById("loginPopup").style.display = "none";
   }
 
   window.addEventListener('scroll', revealSections);

@@ -199,75 +199,78 @@ risk management, and disciplined execution in Indian markets.
       </div>
 
       <div class="journal-card psychology-card">
-        <h3>Psychology Check</h3>
+  <h3>Psychology Check</h3>
 
-        <p class="mini-title">Before saving this trade, answer honestly:</p>
+  <p class="mini-title">Rate yourself honestly from 1 to 5:</p>
 
-        <label>
-          <input id="planCheck" type="checkbox">
-          Did I take this trade according to my plan?
-        </label>
+  <label>Plan Followed</label>
+  <select id="planRating">
+    <option value="0">Select Rating</option>
+    <option value="1">1 - Poor</option>
+    <option value="2">2 - Weak</option>
+    <option value="3">3 - Average</option>
+    <option value="4">4 - Good</option>
+    <option value="5">5 - Excellent</option>
+  </select>
 
-        <label>
-          <input id="slCheck" type="checkbox">
-          Was my stop loss decided before entry?
-        </label>
+  <label>Stop Loss Discipline</label>
+  <select id="slRating">
+    <option value="0">Select Rating</option>
+    <option value="1">1 - Poor</option>
+    <option value="2">2 - Weak</option>
+    <option value="3">3 - Average</option>
+    <option value="4">4 - Good</option>
+    <option value="5">5 - Excellent</option>
+  </select>
 
-        <label>
-          <input id="riskCheck" type="checkbox">
-          Was my risk small enough to accept calmly?
-        </label>
+  <label>Emotion Control</label>
+  <select id="emotionRating">
+    <option value="0">Select Rating</option>
+    <option value="1">1 - Poor</option>
+    <option value="2">2 - Weak</option>
+    <option value="3">3 - Average</option>
+    <option value="4">4 - Good</option>
+    <option value="5">5 - Excellent</option>
+  </select>
 
-        <label>
-          <input id="emotionCheck" type="checkbox">
-          Did I enter without fear, greed, revenge, or FOMO?
-        </label>
+  <label>Risk Management</label>
+  <select id="riskRating">
+    <option value="0">Select Rating</option>
+    <option value="1">1 - Poor</option>
+    <option value="2">2 - Weak</option>
+    <option value="3">3 - Average</option>
+    <option value="4">4 - Good</option>
+    <option value="5">5 - Excellent</option>
+  </select>
 
-        <label>
-          <input id="exitCheck" type="checkbox">
-          Did I exit according to rules, not emotion?
-        </label>
-        <label>
-  <input id="chaseCheck" type="checkbox">
-  Did I avoid chasing the price?
-</label>
+  <label>Entry Quality</label>
+  <select id="entryRating">
+    <option value="0">Select Rating</option>
+    <option value="1">1 - Poor</option>
+    <option value="2">2 - Weak</option>
+    <option value="3">3 - Average</option>
+    <option value="4">4 - Good</option>
+    <option value="5">5 - Excellent</option>
+  </select>
 
-<label>
-  <input id="slLogicalCheck" type="checkbox">
-  Was my stop loss logical, not random?
-</label>
+  <select id="tradeQuality">
+    <option value="">Trade Quality</option>
+    <option value="A+">A+ Setup</option>
+    <option value="A">A Setup</option>
+    <option value="B">B Setup</option>
+    <option value="C">C Setup</option>
+    <option value="F">F Setup / Gamble</option>
+  </select>
 
-<label>
-  <input id="positionSizeCheck" type="checkbox">
-  Was my position size safe?
-</label>
+  <textarea id="psychologyNote" placeholder="What was going on in my mind during this trade?"></textarea>
 
-<label>
-  <input id="overtradeCheck" type="checkbox">
-  Did I avoid overtrading?
-</label>
-
-<label>
-  <input id="acceptLossCheck" type="checkbox">
-  Was I ready to accept the loss peacefully?
-</label>
-<select id="tradeQuality">
-  <option value="">Trade Quality</option>
-  <option value="A+">A+ Setup</option>
-  <option value="A">A Setup</option>
-  <option value="B">B Setup</option>
-  <option value="C">C Setup</option>
-  <option value="F">F Setup / Gamble</option>
-</select>
-        <textarea id="psychologyNote" placeholder="What was going on in my mind during this trade?"></textarea>
-
-        <div class="mind-score">
-          Discipline Score:
-          <strong id="disciplineScore">0/5</strong>
-        </div>
-      </div>
-
-    </div>
+  <div class="mind-score">
+    Trader Score:
+    <strong id="disciplineScore">0/100</strong>
+    <div id="traderGrade">
+        Trader Grade: N/A</div>
+  </div>
+</div>
 
     <div class="journal-layout">
 
@@ -281,6 +284,25 @@ risk management, and disciplined execution in Indian markets.
         <p>Best Trade: ₹<span id="bestTrade">0</span></p>
         <p>Worst Trade: ₹<span id="worstTrade">0</span></p>
         <p>Most Repeated Mistake: <span id="topMistake">None</span></p>
+        <p>Top 3 Mistakes:</p>
+<ul id="topMistakesList">
+    <h4>Mistake Cost Analysis</h4>
+
+<ul id="mistakeCostList">
+  <li>No Data</li>
+</ul>
+<h4>Best Setup Finder</h4>
+
+<ul id="bestSetupList">
+  <li>No Data</li>
+</ul>
+<h4>Worst Setup Warning</h4>
+
+<div id="worstSetupWarning">
+  No warning yet.
+</div>
+  <li>None</li>
+</ul>
       </div>
 
       <div class="journal-card">
@@ -456,27 +478,58 @@ risk management, and disciplined execution in Indian markets.
 let trades = [];
 
 function calculateDisciplineScore() {
-  let score = 0;
+  const plan = Number(document.getElementById("planRating").value);
+  const sl = Number(document.getElementById("slRating").value);
+  const emotion = Number(document.getElementById("emotionRating").value);
+  const risk = Number(document.getElementById("riskRating").value);
+  const entry = Number(document.getElementById("entryRating").value);
 
-  if (document.getElementById("planCheck").checked) score++;
-  if (document.getElementById("slCheck").checked) score++;
-  if (document.getElementById("riskCheck").checked) score++;
-  if (document.getElementById("emotionCheck").checked) score++;
-  if (document.getElementById("exitCheck").checked) score++;
-  if (document.getElementById("chaseCheck").checked) score++;
-if (document.getElementById("slLogicalCheck").checked) score++;
-if (document.getElementById("positionSizeCheck").checked) score++;
-if (document.getElementById("overtradeCheck").checked) score++;
-if (document.getElementById("acceptLossCheck").checked) score++;
+  const score = plan + sl + emotion + risk + entry;
 
-  document.getElementById("disciplineScore").innerText = score + "/10";
+  const traderScore = score * 4;
+document.getElementById("disciplineScore").innerText = traderScore + "/100";
+const scoreElement = document.getElementById("disciplineScore");
+
+if (traderScore >= 90) {
+  scoreElement.style.color = "#00c896";
+}
+
+else if (traderScore >= 70) {
+  scoreElement.style.color = "#ffcc00";
+}
+
+else {
+  scoreElement.style.color = "#ff4d4d";
+}
+const gradeElement = document.getElementById("traderGrade");
+
+if (traderScore >= 95) {
+  gradeElement.innerText = "🏆 Elite Trader";
+}
+
+else if (traderScore >= 85) {
+  gradeElement.innerText = "🔥 Professional Trader";
+}
+
+else if (traderScore >= 70) {
+  gradeElement.innerText = "📈 Consistent Trader";
+}
+
+else if (traderScore >= 50) {
+  gradeElement.innerText = "⚠️ Developing Trader";
+}
+
+else {
+  gradeElement.innerText = "🚨 Undisciplined Trader";
+}
 
   return score;
 }
 
-["planCheck", "slCheck", "riskCheck", "emotionCheck", "exitCheck", "chaseCheck", "slLogicalCheck", "positionSizeCheck", "overtradeCheck", "acceptLossCheck"].forEach((id) => {
+["planRating", "slRating", "emotionRating", "riskRating", "entryRating"].forEach((id) => {
   document.getElementById(id).addEventListener("change", calculateDisciplineScore);
 });
+  
 function toggleOptionFields() {
   const segment = document.getElementById("tradeSegment").value;
 
@@ -592,7 +645,83 @@ function updateDashboard() {
       topMistake = mistake;
     }
   });
+  const bestSetupList = document.getElementById("bestSetupList");
+bestSetupList.innerHTML = "";
 
+const setupStats = {};
+
+trades.forEach((trade) => {
+  const setup = trade.setup || "No Setup";
+
+  if (!setupStats[setup]) {
+    setupStats[setup] = {
+      trades: 0,
+      pnl: 0,
+      wins: 0
+    };
+  }
+
+  setupStats[setup].trades++;
+  setupStats[setup].pnl += trade.pnl;
+
+  if (trade.pnl > 0) {
+    setupStats[setup].wins++;
+  }
+});
+
+const sortedSetups = Object.entries(setupStats)
+  .sort((a, b) => b[1].pnl - a[1].pnl);
+
+if (sortedSetups.length === 0) {
+  bestSetupList.innerHTML = "<li>No Data</li>";
+} else {
+  sortedSetups.forEach((item) => {
+    const setupName = item[0];
+    const data = item[1];
+
+    const winRate = Math.round((data.wins / data.trades) * 100);
+
+    bestSetupList.innerHTML += `
+      <li>
+        ${setupName} — ₹${data.pnl.toFixed(2)} |
+        Win Rate: ${winRate}%
+      </li>
+    `;
+  });
+}
+const worstSetupWarning =
+  document.getElementById("worstSetupWarning");
+
+let worstSetup = null;
+let lowestPnl = 0;
+
+Object.entries(setupStats).forEach((item) => {
+
+  const setupName = item[0];
+  const data = item[1];
+
+  if (data.pnl < lowestPnl) {
+    lowestPnl = data.pnl;
+    worstSetup = setupName;
+  }
+
+});
+
+if (worstSetup) {
+
+  worstSetupWarning.innerHTML =
+    `⚠️ Warning: ${worstSetup}
+     is currently your worst setup
+     (₹${lowestPnl.toFixed(2)})`;
+
+}
+
+else {
+
+  worstSetupWarning.innerHTML =
+    "✅ No losing setup detected yet.";
+
+}
   document.getElementById("liveTotalTrades").innerText = totalTrades;
   document.getElementById("liveTotalPnl").innerText = "₹" + totalPnl.toFixed(2);
   document.getElementById("liveWinRate").innerText = winRate + "%";
@@ -605,12 +734,73 @@ function updateDashboard() {
   document.getElementById("bestTrade").innerText = bestTrade.toFixed(2);
   document.getElementById("worstTrade").innerText = worstTrade.toFixed(2);
   document.getElementById("topMistake").innerText = topMistake;
+  const topMistakesList = document.getElementById("topMistakesList");
+topMistakesList.innerHTML = "";
+const mistakeCostList = document.getElementById("mistakeCostList");
+mistakeCostList.innerHTML = "";
+
+const mistakeCosts = {};
+
+trades.forEach((trade) => {
+
+  if (
+    trade.mistake &&
+    trade.mistake !== "No Mistake"
+  ) {
+
+    if (!mistakeCosts[trade.mistake]) {
+      mistakeCosts[trade.mistake] = 0;
+    }
+
+    if (trade.pnl < 0) {
+      mistakeCosts[trade.mistake] += Math.abs(trade.pnl);
+    }
+
+  }
+
+});
+
+const sortedCosts =
+  Object.entries(mistakeCosts)
+    .sort((a, b) => b[1] - a[1]);
+
+if (sortedCosts.length === 0) {
+
+  mistakeCostList.innerHTML =
+    "<li>No Data</li>";
+
+} else {
+
+  sortedCosts.forEach((item) => {
+
+    mistakeCostList.innerHTML += `
+      <li>
+        ${item[0]}
+        = ₹${item[1].toFixed(2)}
+      </li>
+    `;
+
+  });
+
+}
+
+const sortedMistakes = Object.entries(mistakeCount)
+  .sort((a, b) => b[1] - a[1])
+  .slice(0, 3);
+
+if (sortedMistakes.length === 0) {
+  topMistakesList.innerHTML = "<li>None</li>";
+} else {
+  sortedMistakes.forEach((item) => {
+    topMistakesList.innerHTML += `<li>${item[0]} - ${item[1]} times</li>`;
+  });
+}
 }
 function classifyTrade(trade) {
   const isWin = trade.pnl > 0;
   const goodProcess =
     trade.rules &&
-    trade.disciplineScore >= 7 &&
+    trade.disciplineScore >= 18 &&
     trade.tradeQuality !== "F";
 
   if (isWin && goodProcess) {
@@ -719,16 +909,11 @@ function resetTradeForm() {
   document.getElementById("tradeSetup").value = "";
   document.getElementById("tradeMistake").value = "";
   document.getElementById("rulesFollowed").checked = false;
-  document.getElementById("planCheck").checked = false;
-  document.getElementById("slCheck").checked = false;
-  document.getElementById("riskCheck").checked = false;
-  document.getElementById("emotionCheck").checked = false;
-  document.getElementById("exitCheck").checked = false;
-  document.getElementById("chaseCheck").checked = false;
-document.getElementById("slLogicalCheck").checked = false;
-document.getElementById("positionSizeCheck").checked = false;
-document.getElementById("overtradeCheck").checked = false;
-document.getElementById("acceptLossCheck").checked = false;
+document.getElementById("planRating").value = "0";
+document.getElementById("slRating").value = "0";
+document.getElementById("emotionRating").value = "0";
+document.getElementById("riskRating").value = "0";
+document.getElementById("entryRating").value = "0";
 document.getElementById("tradeQuality").value = "";
   document.getElementById("psychologyNote").value = "";
   calculateDisciplineScore();

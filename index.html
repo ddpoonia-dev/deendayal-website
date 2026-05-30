@@ -4,9 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Deendayal | Professional Intraday Trader</title>
+  
+  <meta name="description" content="Deendayal - Professional intraday trader specializing in price action, risk management, and NSE F&O trading in Indian markets.">
+  <meta name="author" content="Deendayal">
+  
   <link rel="stylesheet" href="style.css">
   <link rel="icon" type="image/png" href="logo.png">
 </head>
+
 <body>
 
  <nav>
@@ -46,12 +51,12 @@ risk management, and disciplined execution in Indian markets.
     <p class="description">
       I focus on disciplined execution, risk management, and data-driven trading decisions.
     </p>
-    <a href="#" class="btn">Know More</a>
+    <a href="#about" class="btn">Know More</a>
     <a href="resume.pdf" class="btn">
   Download Resume
 </a>
   </section>
-<section class="about" id="about">
+<section class="about reveal" id="about">
   <p class="section-title">About Me</p>
   <h2>Hi, I'm Deendayal</h2>
 
@@ -64,8 +69,10 @@ risk management, and disciplined execution in Indian markets.
     I believe trading is not about predicting every market move. It is about preparation,
     execution, and protecting capital first.
   </p>
-<section class="approach" id="approach">
-  <p class="section-title">My Trading Approach</p>
+</section>
+
+<section class="approach reveal" id="approach">
+
   <h2>How I Trade</h2>
 
   <div class="card">
@@ -92,37 +99,16 @@ risk management, and disciplined execution in Indian markets.
     </p>
   </div>
 
-  <div class="card">
+    <div class="card">
     <h3>04. Review & Improve</h3>
     <p>
       I maintain a trading journal and review trades regularly
       to improve consistency.
     </p>
   </div>
-<section class="markets" id="markets">
-    <section class="chart-section">
-  <p class="section-title">Live Chart</p>
-  <h2>Nifty 50 Live Chart</h2>
-
-  <div class="tradingview-widget-container">
-    <div class="tradingview-widget-container__widget"></div>
-
-    <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
-    {
-      "autosize": true,
-      "symbol": "NSE:NIFTY",
-      "interval": "15",
-      "timezone": "Asia/Kolkata",
-      "theme": "dark",
-      "style": "1",
-      "locale": "in",
-      "allow_symbol_change": true,
-      "calendar": false,
-      "support_host": "https://www.tradingview.com"
-    }
-    </script>
-  </div>
 </section>
+
+<section class="markets reveal" id="markets">
   <p class="section-title">Markets</p>
   <h2>What I Trade</h2>
 
@@ -135,7 +121,11 @@ risk management, and disciplined execution in Indian markets.
     <span>Risk Management</span>
     <span>Technical Analysis</span>
     <span>Trading Psychology</span>
-  </div><section class="performance">
+  </div>
+</section>
+
+  
+  <section class="performance reveal" id="performance">
   <p class="section-title">Performance</p>
   <h2>Trading Focus</h2>
 
@@ -156,7 +146,7 @@ risk management, and disciplined execution in Indian markets.
     </div>
   </div>
 </section>
-<section class="contact" id="contact">
+<section class="contact reveal" id="contact">
   <p class="section-title">Contact</p>
   <h2>Let's Connect</h2>
 
@@ -166,33 +156,58 @@ risk management, and disciplined execution in Indian markets.
 
   <div class="contact-links">
     <a href="mailto:deendayalpoonia413@gmail.com">Email Me</a>
-    <a href="https://instagram.com/ddpoonia" target="_blank">Instagram</a>
-    <a href="https://t.me/learner_nb" target="_blank">Telegram</a>
+   <a href="https://instagram.com/ddpoonia" target="_blank" rel="noopener noreferrer">Instagram</a>
+<a href="https://t.me/learner_nb" target="_blank" rel="noopener noreferrer">Telegram</a>
+
   </div>
-  <form class="contact-form" action="mailto:deendayalpoonia413@gmail.com" method="post" enctype="text/plain">
+<form class="contact-form" action="https://formspree.io/f/xbdbbbjn" method="POST">
+    <input type="hidden" name="_subject" value="New message from Deendayal website">
+
   <input type="text" name="name" placeholder="Your Name" required>
   <input type="email" name="email" placeholder="Your Email" required>
   <textarea name="message" placeholder="Your Message" rows="5" required></textarea>
   <button type="submit">Send Message</button>
 </form>
+
 </section>
+<section class="disclaimer reveal" id="disclaimer">
+  <h2>Disclaimer</h2>
+  <p>
+    I am NOT a SEBI-registered investment advisor. The information shared 
+    on this website is for educational purposes only. It does not constitute 
+    financial or investment advice. Trading involves substantial risk and 
+    past performance does not guarantee future results. Please consult a 
+    SEBI-registered advisor before making any investment decisions.
+  </p>
+</section>
+
 <footer>
-   © 2026 Deendayal | Professional Intraday Trader
-
+  © <span id="year"></span> Deendayal | Professional Intraday Trader
   <br><br>
-
   <small>
     Strategy Over Emotion. Consistency Over Luck.
   </small>
-  <section class="disclaimer">
-  <h2>Disclaimer</h2>
-
-  <p>
-    The information shared on this website is for educational purposes only.
-    It does not constitute financial or investment advice. Trading involves
-    substantial risk and past performance does not guarantee future results.
-  </p>
-</section>
 </footer>
+
+<script>
+  document.getElementById('year').textContent = new Date().getFullYear();
+
+  const reveals = document.querySelectorAll('.reveal');
+
+  function revealSections() {
+    reveals.forEach((section) => {
+      const sectionTop = section.getBoundingClientRect().top;
+      const screenPosition = window.innerHeight - 100;
+
+      if (sectionTop < screenPosition) {
+        section.classList.add('active');
+      }
+    });
+  }
+
+  window.addEventListener('scroll', revealSections);
+  revealSections();
+</script>
+
 </body>
 </html>

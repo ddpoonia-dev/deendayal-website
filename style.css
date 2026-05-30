@@ -1,13 +1,11 @@
 *html{
   scroll-behavior:smooth;
-}html {
-  scroll-behavior: smooth;
 }
 
-{
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+* {
+  margin:0;
+  padding:0;
+  box-sizing:border-box;
 }
 
 body {
@@ -343,4 +341,73 @@ nav a:hover {
 .contact-form button:hover {
   background: #00c896;
   color: #000;
+}.hero{
+  animation: fadeUp 1s ease;
+}
+
+@keyframes fadeUp{
+  from{
+    opacity:0;
+    transform:translateY(40px);
+  }
+  to{
+    opacity:1;
+    transform:translateY(0);
+  }
+}nav{
+  position:sticky;
+  top:0;
+  backdrop-filter:blur(10px);
+  background:rgba(13,13,13,0.8);
+  z-index:1000;
+}.card,
+.perf-card{
+  transition:.3s;
+}
+
+.card:hover,
+.perf-card:hover{
+  transform:translateY(-8px);
+  border-color:#00c896;
+}.tags span{
+  transition:.3s;
+}
+
+.tags span:hover{
+  transform:translateY(-3px);
+  box-shadow:0 0 15px rgba(0,200,150,.3);
+}.btn{
+  transition:.3s;
+}
+
+.btn:hover{
+  transform:translateY(-2px);
+  box-shadow:0 0 20px rgba(0,200,150,.4);
+}.reveal{
+  opacity:0;
+  transform:translateY(40px);
+  transition:all .8s ease;
+}
+
+.reveal.active{
+  opacity:1;
+  transform:translateY(0);
+}.reveal{
+  opacity:0;
+  transform:translateY(40px);
+  transition:all .8s ease;
+}
+
+.reveal.active{
+  opacity:1;
+  transform:translateY(0);
+}.reveal {
+  opacity: 0;
+  transform: translateY(40px);
+  transition: all 0.8s ease;
+}
+
+.reveal.active {
+  opacity: 1;
+  transform: translateY(0);
 }

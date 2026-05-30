@@ -308,4 +308,39 @@ nav a:hover {
 
 .perf-card p{
   color:#aaa;
+}.contact-form {
+  margin-top: 35px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  max-width: 500px;
+}
+
+.contact-form input,
+.contact-form textarea {
+  background: #141414;
+  border: 1px solid #222;
+  color: white;
+  padding: 14px;
+  border-radius: 6px;
+  outline: none;
+}
+
+.contact-form input:focus,
+.contact-form textarea:focus {
+  border-color: #00c896;
+}
+
+.contact-form button {
+  background: transparent;
+  color: #00c896;
+  border: 1px solid #00c896;
+  padding: 14px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.contact-form button:hover {
+  background: #00c896;
+  color: #000;
 }

@@ -93,6 +93,9 @@ risk management, and disciplined execution in Indian markets.
         </div>
       </div>
     </div>
+    <div class="process-warning" id="processWarning">
+  Add a trade to get process feedback.
+</div>
 
     <div class="journal-layout">
 
@@ -175,6 +178,17 @@ risk management, and disciplined execution in Indian markets.
           <option>Ignored Stop Loss</option>
           <option>Oversized Position</option>
         </select>
+        <label>Before Entry Screenshot</label>
+<input
+  id="beforeScreenshot"
+  type="file"
+  accept="image/*">
+
+<label>After Exit Screenshot</label>
+<input
+  id="afterScreenshot"
+  type="file"
+  accept="image/*">
 
         <label class="check-row">
           <input id="rulesFollowed" type="checkbox">
@@ -525,6 +539,13 @@ futureLotSize: document.getElementById("futureLotSize")?.value || "",
     entryReason: document.getElementById("entryReason").value,
     setup: document.getElementById("tradeSetup").value,
     mistake: document.getElementById("tradeMistake").value || "No Mistake",
+    beforeScreenshot: document.getElementById("beforeScreenshot").files[0]
+  ? URL.createObjectURL(document.getElementById("beforeScreenshot").files[0])
+  : "",
+
+afterScreenshot: document.getElementById("afterScreenshot").files[0]
+  ? URL.createObjectURL(document.getElementById("afterScreenshot").files[0])
+  : "",
     pnl: pnl,
     rules: document.getElementById("rulesFollowed").checked,
     disciplineScore: calculateDisciplineScore(),
@@ -536,6 +557,7 @@ futureLotSize: document.getElementById("futureLotSize")?.value || "",
 
   updateDashboard();
   renderTradeHistory();
+  showProcessWarning(trade);
   resetTradeForm();
   document.getElementById("entryReason").value = "";
 }
@@ -584,6 +606,51 @@ function updateDashboard() {
   document.getElementById("worstTrade").innerText = worstTrade.toFixed(2);
   document.getElementById("topMistake").innerText = topMistake;
 }
+function classifyTrade(trade) {
+  const isWin = trade.pnl > 0;
+  const goodProcess =
+    trade.rules &&
+    trade.disciplineScore >= 7 &&
+    trade.tradeQuality !== "F";
+
+  if (isWin && goodProcess) {
+    return "Winning Trade + Good Process";
+  }
+
+  if (isWin && !goodProcess) {
+    return "Winning Trade + Bad Process";
+  }
+
+  if (!isWin && goodProcess) {
+    return "Losing Trade + Good Process";
+  }
+
+  return "Losing Trade + Bad Process";
+}
+function showProcessWarning(trade) {
+  const warningBox = document.getElementById("processWarning");
+  const tradeClass = classifyTrade(trade);
+
+  if (tradeClass === "Winning Trade + Bad Process") {
+    warningBox.innerText = "⚠️ Profit hua, lekin process weak tha. Aise trades repeat mat karo.";
+    warningBox.className = "process-warning warning";
+  }
+
+  else if (tradeClass === "Losing Trade + Good Process") {
+    warningBox.innerText = "✅ Loss hua, lekin process strong tha. Ye acceptable trading hai.";
+    warningBox.className = "process-warning good";
+  }
+
+  else if (tradeClass === "Winning Trade + Good Process") {
+    warningBox.innerText = "🔥 Excellent trade. Profit bhi aur process bhi strong.";
+    warningBox.className = "process-warning good";
+  }
+
+  else {
+    warningBox.innerText = "🚨 Loss bhi hua aur process bhi weak tha. Is trade ko deeply review karo.";
+    warningBox.className = "process-warning danger";
+  }
+}
 
 function renderTradeHistory() {
   const history = document.getElementById("tradeHistory");
@@ -591,14 +658,54 @@ function renderTradeHistory() {
 
   trades.forEach((trade) => {
     const pnlClass = trade.pnl >= 0 ? "profit" : "loss";
+    const tradeClass = classifyTrade(trade);
 
-    history.innerHTML += `
-      <div class="trade-row">
-        <span>${trade.symbol || "N/A"} | ${trade.segment || "N/A"} | ${trade.direction}</span>
-        <span>${trade.setup || "No Setup"}</span>
-        <strong class="${pnlClass}">₹${trade.pnl.toFixed(2)}</strong>
-      </div>
-    `;
+   history.innerHTML += `
+  <div class="trade-row">
+
+    <div>
+      <strong>
+        ${trade.symbol || "N/A"}
+      </strong>
+
+      <br>
+
+      ${trade.segment || "N/A"} |
+      ${trade.direction || "N/A"}
+
+      <br>
+
+      Setup:
+      ${trade.setup || "No Setup"}
+      <br>
+Process:
+${tradeClass}  
+    </div>
+
+    <div>
+      <strong class="${pnlClass}">
+        ₹${trade.pnl.toFixed(2)}
+      </strong>
+    </div>
+
+    <div>
+
+      ${
+        trade.beforeScreenshot
+        ? `<img src="${trade.beforeScreenshot}" class="trade-thumb">`
+        : ""
+      }
+
+      ${
+        trade.afterScreenshot
+        ? `<img src="${trade.afterScreenshot}" class="trade-thumb">`
+        : ""
+      }
+
+    </div>
+
+  </div>
+`;
   });
 }
 

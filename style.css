@@ -626,15 +626,20 @@ nav a:hover {
 
 .check-row,
 .psychology-card label {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 12px;
   color: #ccc;
   margin-bottom: 14px;
   line-height: 1.5;
 }
 
 .check-row input,
-.psychology-card input {
-  margin-right: 8px;
+.psychology-card input[type="checkbox"] {
+  width: 18px !important;
+  height: 18px;
+  margin: 0;
+  flex-shrink: 0;
 }
 
 .mini-title {
@@ -700,4 +705,44 @@ nav a:hover {
 
 .empty-text {
   color: #888;
+}.trade-thumb{
+  width:80px;
+  height:80px;
+  object-fit:cover;
+  border-radius:8px;
+  border:1px solid #222;
+  margin-right:8px;
+  cursor:pointer;
+}
+
+.trade-thumb:hover{
+  transform:scale(1.08);
+}.trade-row {
+  align-items: center;
+}
+
+.trade-row small {
+  color: #888;
+}.process-warning {
+  background: #0d0d0d;
+  border: 1px solid #222;
+  padding: 16px;
+  border-radius: 10px;
+  margin: 20px 0;
+  color: #aaa;
+}
+
+.process-warning.good {
+  border-color: #00c896;
+  color: #00c896;
+}
+
+.process-warning.warning {
+  border-color: #ffcc00;
+  color: #ffcc00;
+}
+
+.process-warning.danger {
+  border-color: #ff4d4d;
+  color: #ff4d4d;
 }

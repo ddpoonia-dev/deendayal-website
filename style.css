@@ -47,6 +47,7 @@ nav a:hover {
   display: flex;
   flex-direction: column;
   justify-content: center;
+  align-items: flex-start;
   padding: 0 60px;
 }
 
@@ -410,4 +411,293 @@ nav a:hover {
 .reveal.active {
   opacity: 1;
   transform: translateY(0);
+}.journal {
+  padding: 90px 60px;
+  border-top: 1px solid #222;
+}
+
+.journal-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.journal-card {
+  background: #141414;
+  border: 1px solid #222;
+  padding: 25px;
+  border-radius: 10px;
+}
+
+.journal-card h3 {
+  color: #00c896;
+  margin-bottom: 15px;
+}
+
+.journal-card input,
+.journal-card select,
+.journal-card textarea {
+  width: 100%;
+  margin-bottom: 12px;
+  background: #0d0d0d;
+  border: 1px solid #222;
+  color: white;
+  padding: 12px;
+  border-radius: 6px;
+}
+
+.journal-card button {
+  width: 100%;
+  margin-top: 8px;
+  background: transparent;
+  color: #00c896;
+  border: 1px solid #00c896;
+  padding: 12px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.journal-card button:hover {
+  background: #00c896;
+  color: #000;
+}.login-link {
+  color: #00c896;
+  border: 1px solid #00c896;
+  padding: 8px 16px;
+  border-radius: 20px;
+}
+
+.login-link:hover {
+  background: #00c896;
+  color: #000;
+}.login-link {
+  color: #00c896;
+  border: 1px solid #00c896;
+  padding: 8px 16px;
+  border-radius: 20px;
+}
+
+.login-popup {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.75);
+  z-index: 9999;
+  justify-content: center;
+  align-items: center;
+}
+
+.login-box {
+  background: #141414;
+  border: 1px solid #222;
+  padding: 30px;
+  border-radius: 12px;
+  width: 350px;
+  position: relative;
+}
+
+.login-box h2 {
+  color: #00c896;
+  margin-bottom: 20px;
+}
+
+.login-box input {
+  width: 100%;
+  margin-bottom: 14px;
+  background: #0d0d0d;
+  border: 1px solid #222;
+  color: white;
+  padding: 13px;
+  border-radius: 6px;
+}
+
+.login-box button {
+  width: 100%;
+  margin-top: 10px;
+  background: transparent;
+  color: #00c896;
+  border: 1px solid #00c896;
+  padding: 12px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.login-box button:hover,
+.login-link:hover {
+  background: #00c896;
+  color: #000;
+}
+
+.close-login {
+  position: absolute;
+  right: 18px;
+  top: 12px;
+  font-size: 28px;
+  cursor: pointer;
+  color: #aaa;
+}.journal {
+  padding: 90px 60px;
+  border-top: 1px solid #222;
+}
+
+.journal-dashboard {
+  margin-top: 35px;
+}
+
+.tracker-card,
+.journal-card {
+  background: #141414;
+  border: 1px solid #222;
+  padding: 28px;
+  border-radius: 14px;
+  margin-bottom: 22px;
+}
+
+.tracker-card h3,
+.journal-card h3 {
+  color: #00c896;
+  margin-bottom: 20px;
+}
+
+.tracker-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 18px;
+}
+
+.tracker-grid div {
+  background: #0d0d0d;
+  border: 1px solid #222;
+  padding: 18px;
+  border-radius: 10px;
+}
+
+.tracker-grid span {
+  display: block;
+  color: #888;
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
+.tracker-grid strong {
+  color: #fff;
+  font-size: 26px;
+}
+
+.journal-layout {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 22px;
+}
+
+.journal-card input,
+.journal-card select,
+.journal-card textarea {
+  width: 100%;
+  margin-bottom: 14px;
+  background: #0d0d0d;
+  border: 1px solid #222;
+  color: white;
+  padding: 13px;
+  border-radius: 8px;
+  outline: none;
+}
+
+.journal-card input:focus,
+.journal-card select:focus,
+.journal-card textarea:focus {
+  border-color: #00c896;
+}
+
+.journal-card button {
+  width: 100%;
+  background: transparent;
+  color: #00c896;
+  border: 1px solid #00c896;
+  padding: 13px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.journal-card button:hover {
+  background: #00c896;
+  color: #000;
+}
+
+.check-row,
+.psychology-card label {
+  display: block;
+  color: #ccc;
+  margin-bottom: 14px;
+  line-height: 1.5;
+}
+
+.check-row input,
+.psychology-card input {
+  margin-right: 8px;
+}
+
+.mini-title {
+  color: #aaa;
+  margin-bottom: 18px;
+}
+
+.mind-score {
+  margin-top: 15px;
+  padding: 15px;
+  background: #0d0d0d;
+  border: 1px solid #222;
+  border-radius: 8px;
+  color: #aaa;
+}
+
+.mind-score strong {
+  color: #00c896;
+}
+
+.chart-box {
+  height: 230px;
+  background: #0d0d0d;
+  border: 1px solid #222;
+  border-radius: 12px;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: end;
+  justify-content: center;
+  color: #888;
+  padding-bottom: 20px;
+}
+
+.chart-line {
+  position: absolute;
+  width: 80%;
+  height: 80px;
+  border-top: 3px solid #00c896;
+  transform: rotate(-8deg);
+  top: 90px;
+  opacity: 0.7;
+}
+
+.trade-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+  background: #0d0d0d;
+  border: 1px solid #222;
+  padding: 14px;
+  border-radius: 8px;
+  margin-bottom: 10px;
+}
+
+.profit {
+  color: #00c896;
+}
+
+.loss {
+  color: #ff4d4d;
+}
+
+.empty-text {
+  color: #888;
 }

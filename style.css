@@ -584,11 +584,13 @@ nav a:hover {
   font-size: 26px;
 }
 
-.journal-layout {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 22px;
+.journal-layout{
+  display:grid;
+  grid-template-columns: 1.1fr 1.1fr 1.3fr 1.3fr 1.3fr 1.2fr;
+  gap:20px;
+  align-items:start;
 }
+
 
 .journal-card input,
 .journal-card select,
@@ -784,4 +786,869 @@ nav a:hover {
   object-fit: cover;
   border-radius: 8px;
   border: 1px solid #222;
+}
+.trade-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.trade-filters input,
+.trade-filters select {
+  width: 100%;
+  padding: 10px;
+  background: #080808;
+  color: white;
+  border: 1px solid #222;
+  border-radius: 8px;
+}
+.export-btn{
+  width:100%;
+  padding:10px;
+  margin-bottom:10px;
+  border:none;
+  border-radius:8px;
+  cursor:pointer;
+  background:#00c896;
+  color:#000;
+  font-weight:600;
+}
+#equityCurve {
+  width: 100%;
+  height: 220px;
+  background: #050505;
+  border: 1px solid #222;
+  border-radius: 12px;
+}
+
+.equity-line {
+  fill: none;
+  stroke: #00c896;
+  stroke-width: 3;
+}
+
+.equity-dot {
+  fill: #00c896;
+}
+
+.equity-zero-line {
+  stroke: #333;
+  stroke-width: 1;
+}
+.setup-analysis-row {
+  padding: 10px;
+  margin: 8px 0;
+  border: 1px solid #222;
+  border-radius: 8px;
+  background: #080808;
+}
+.analytics-hero {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.analytics-hero div {
+  padding: 18px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #041b16, #020202);
+  border: 1px solid rgba(0, 200, 150, 0.35);
+  box-shadow: 0 0 25px rgba(0, 200, 150, 0.08);
+}
+
+.analytics-hero span,
+.metric-card span {
+  display: block;
+  font-size: 12px;
+  color: #aaa;
+  margin-bottom: 8px;
+}
+
+.analytics-hero strong {
+  font-size: 22px;
+  color: #00c896;
+}
+
+.analytics-grid-pro {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.metric-card {
+  padding: 14px;
+  border-radius: 14px;
+  background: #070707;
+  border: 1px solid #1f1f1f;
+}
+
+.metric-card strong {
+  font-size: 18px;
+  color: #ffffff;
+}
+
+@media (max-width: 768px) {
+  .analytics-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .analytics-grid-pro {
+    grid-template-columns: 1fr;
+  }
+}
+.advanced-toggle {
+  width: 100%;
+  padding: 10px;
+  margin: 14px 0;
+  border: 1px solid rgba(0, 200, 150, 0.4);
+  border-radius: 10px;
+  background: #050505;
+  color: #00c896;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.advanced-analytics {
+  display: none;
+  margin-top: 10px;
+  padding: 12px;
+  border: 1px solid #222;
+  border-radius: 12px;
+  background: #060606;
+}
+
+.advanced-analytics:empty {
+  display: none;
+  padding: 0;
+  border: none;
+}
+.psychology-verdict-card {
+  padding: 14px;
+  margin: 14px 0;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #061a14, #050505);
+  border: 1px solid rgba(0, 200, 150, 0.35);
+}
+
+.psychology-verdict-card h4 {
+  color: #00c896;
+  margin-bottom: 8px;
+}
+
+.psychology-verdict-card p {
+  color: #ddd;
+  font-size: 13px;
+  line-height: 1.5;
+}
+#tradeHistory {
+  max-height: 520px;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+#tradeHistory::-webkit-scrollbar {
+  width: 6px;
+}
+
+#tradeHistory::-webkit-scrollbar-thumb {
+  background: #00c896;
+  border-radius: 10px;
+}
+
+#tradeHistory::-webkit-scrollbar-track {
+  background: #050505;
+}
+.trade-row {
+  padding: 10px;
+  margin-bottom: 10px;
+  font-size: 12px;
+}
+/* Premium Trade History UI */
+#tradeHistory {
+  max-height: 560px;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.trade-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1.4fr 0.9fr;
+  gap: 12px;
+  padding: 14px;
+  margin-bottom: 14px;
+  border-radius: 18px;
+  background:
+    linear-gradient(135deg, rgba(0, 200, 150, 0.14), rgba(0, 0, 0, 0.9)),
+    #070707;
+  border: 1px solid rgba(0, 200, 150, 0.28);
+  box-shadow: 0 0 22px rgba(0, 200, 150, 0.08);
+  transition: 0.25s ease;
+  overflow: hidden;
+}
+
+.trade-row:hover {
+  transform: translateY(-3px);
+  border-color: rgba(0, 255, 190, 0.75);
+  box-shadow: 0 0 35px rgba(0, 200, 150, 0.22);
+}
+
+.trade-row::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 5px;
+  height: 100%;
+  background: linear-gradient(180deg, #00c896, #00f5ff);
+}
+
+.trade-row strong {
+  color: #fff;
+  font-size: 15px;
+  letter-spacing: 0.3px;
+}
+
+.profit {
+  color: #00ff9d !important;
+  text-shadow: 0 0 12px rgba(0, 255, 157, 0.35);
+}
+
+.loss {
+  color: #ff4d6d !important;
+  text-shadow: 0 0 12px rgba(255, 77, 109, 0.35);
+}
+
+.trade-row button {
+  min-width: 75px;
+  margin-top: 6px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.trade-thumb {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: 14px;
+  border: 1px solid rgba(0, 200, 150, 0.45);
+  box-shadow: 0 0 15px rgba(0, 200, 150, 0.12);
+}
+
+.trade-filters {
+  padding: 12px;
+  margin: 12px 0;
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(0, 200, 150, 0.1), rgba(0, 0, 0, 0.9));
+  border: 1px solid rgba(0, 200, 150, 0.25);
+}
+
+.trade-filters input,
+.trade-filters select {
+  border-radius: 14px;
+  border: 1px solid #1e1e1e;
+  background: #050505;
+  color: #fff;
+}
+
+.export-btn {
+  background: linear-gradient(135deg, #00c896, #00f5ff) !important;
+  color: #00110d !important;
+  font-weight: 900 !important;
+  box-shadow: 0 0 22px rgba(0, 200, 150, 0.25);
+}
+/* ===== Premium Journal Full UI Upgrade ===== */
+
+.journal-card,
+.tracker-card {
+  position: relative;
+  border-radius: 22px;
+  background:
+    linear-gradient(145deg, rgba(0, 200, 150, 0.08), rgba(5, 5, 5, 0.96)),
+    #070707;
+  border: 1px solid rgba(0, 200, 150, 0.22);
+  box-shadow:
+    0 0 28px rgba(0, 200, 150, 0.08),
+    inset 0 0 18px rgba(255, 255, 255, 0.015);
+  overflow: hidden;
+  transition: 0.25s ease;
+}
+
+.journal-card:hover,
+.tracker-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(0, 255, 190, 0.55);
+  box-shadow:
+    0 0 38px rgba(0, 200, 150, 0.18),
+    inset 0 0 20px rgba(255, 255, 255, 0.02);
+}
+
+.journal-card::before,
+.tracker-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 18px;
+  right: 18px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #00c896, #00f5ff, transparent);
+}
+
+.journal-card h3,
+.tracker-card h3 {
+  color: #00f5bf;
+  letter-spacing: 0.3px;
+  text-shadow: 0 0 16px rgba(0, 200, 150, 0.35);
+}
+
+/* Inputs premium */
+.journal-card input,
+.journal-card select,
+.journal-card textarea {
+  background:
+    linear-gradient(145deg, #050505, #0b0b0b);
+  border: 1px solid rgba(0, 200, 150, 0.18);
+  color: #fff;
+  border-radius: 14px;
+  transition: 0.2s ease;
+}
+
+.journal-card input:focus,
+.journal-card select:focus,
+.journal-card textarea:focus {
+  outline: none;
+  border-color: #00c896;
+  box-shadow: 0 0 18px rgba(0, 200, 150, 0.2);
+}
+
+/* Save button premium */
+#saveTradeBtn {
+  background: linear-gradient(135deg, #00c896, #00f5ff);
+  color: #00110d;
+  border: none;
+  font-weight: 900;
+  border-radius: 14px;
+  box-shadow: 0 0 25px rgba(0, 200, 150, 0.28);
+  transition: 0.2s ease;
+}
+
+#saveTradeBtn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 35px rgba(0, 245, 255, 0.35);
+}
+
+#saveTradeBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Live Tracker */
+.tracker-grid div {
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at top left, rgba(0, 200, 150, 0.18), transparent 40%),
+    #050505;
+  border: 1px solid rgba(0, 200, 150, 0.2);
+  box-shadow: inset 0 0 15px rgba(0, 200, 150, 0.04);
+}
+
+.tracker-grid span {
+  color: #9ca3af;
+}
+
+.tracker-grid strong {
+  color: #fff;
+  font-size: 22px;
+}
+
+/* Psychology Check */
+.psychology-card {
+  background:
+    linear-gradient(145deg, rgba(128, 0, 255, 0.12), rgba(0, 0, 0, 0.96)),
+    #070707;
+  border-color: rgba(160, 80, 255, 0.28);
+}
+
+.psychology-card::before {
+  background: linear-gradient(90deg, transparent, #9d4edd, #00f5ff, transparent);
+}
+
+.mind-score {
+  border-radius: 16px;
+  background:
+    linear-gradient(135deg, rgba(157, 78, 221, 0.16), rgba(0, 0, 0, 0.9));
+  border: 1px solid rgba(157, 78, 221, 0.35);
+  box-shadow: 0 0 22px rgba(157, 78, 221, 0.12);
+}
+
+/* Analytics premium */
+.analytics-hero div,
+.metric-card,
+.psychology-verdict-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.analytics-hero div::after,
+.metric-card::after,
+.psychology-verdict-card::after {
+  content: "";
+  position: absolute;
+  inset: -40%;
+  background: radial-gradient(circle, rgba(0, 245, 255, 0.08), transparent 45%);
+  pointer-events: none;
+}
+
+.metric-card {
+  background:
+    radial-gradient(circle at top right, rgba(0, 245, 255, 0.12), transparent 45%),
+    #050505;
+  border: 1px solid rgba(0, 200, 150, 0.22);
+  box-shadow: 0 0 18px rgba(0, 200, 150, 0.08);
+}
+
+.metric-card strong,
+.analytics-hero strong {
+  color: #00ffb3;
+  text-shadow: 0 0 14px rgba(0, 255, 179, 0.25);
+}
+
+/* Best Trade Showcase */
+#bestTradeShowcase .replay-card {
+  background:
+    linear-gradient(145deg, rgba(255, 204, 0, 0.12), rgba(0, 0, 0, 0.95));
+  border: 1px solid rgba(255, 204, 0, 0.35);
+  border-radius: 18px;
+  box-shadow: 0 0 24px rgba(255, 204, 0, 0.08);
+}
+
+#bestTradeShowcase h4 {
+  color: #ffd166;
+  text-shadow: 0 0 14px rgba(255, 209, 102, 0.25);
+}
+
+/* Trade Replay Card */
+#tradeReplay .replay-card {
+  background:
+    linear-gradient(145deg, rgba(0, 245, 255, 0.10), rgba(0, 0, 0, 0.95));
+  border: 1px solid rgba(0, 245, 255, 0.28);
+  border-radius: 18px;
+  box-shadow: 0 0 24px rgba(0, 245, 255, 0.08);
+}
+
+#tradeReplay h4 {
+  color: #00f5ff;
+  text-shadow: 0 0 14px rgba(0, 245, 255, 0.25);
+}
+
+/* Graph premium */
+.chart-box {
+  border-radius: 18px;
+  padding: 12px;
+  background:
+    radial-gradient(circle at bottom right, rgba(0, 200, 150, 0.18), transparent 45%),
+    #030303;
+  border: 1px solid rgba(0, 200, 150, 0.25);
+  box-shadow: 0 0 28px rgba(0, 200, 150, 0.08);
+}
+
+/* Advanced analytics */
+.advanced-toggle {
+  background:
+    linear-gradient(135deg, rgba(0, 200, 150, 0.12), rgba(0, 0, 0, 0.9));
+}
+
+.advanced-toggle:hover {
+  background: linear-gradient(135deg, #00c896, #00f5ff);
+  color: #00110d;
+}
+
+/* Empty text */
+.empty-text {
+  color: #8b949e;
+  font-style: italic;
+}
+/* ===== Full Website Premium Neon Theme ===== */
+
+/* Body background */
+body {
+  background:
+    radial-gradient(circle at top left, rgba(0, 200, 150, 0.10), transparent 30%),
+    radial-gradient(circle at top right, rgba(0, 245, 255, 0.08), transparent 28%),
+    linear-gradient(180deg, #020403, #050505 45%, #020202);
+  color: #e5e7eb;
+}
+
+/* Navbar */
+nav {
+  background: rgba(2, 6, 5, 0.82);
+  backdrop-filter: blur(18px);
+  border-bottom: 1px solid rgba(0, 200, 150, 0.22);
+  box-shadow: 0 10px 35px rgba(0, 200, 150, 0.06);
+}
+
+nav h2 {
+  color: #00f5bf;
+  text-shadow: 0 0 18px rgba(0, 200, 150, 0.35);
+}
+
+nav a {
+  position: relative;
+  color: #c9d1d9;
+  transition: 0.2s ease;
+}
+
+nav a:hover {
+  color: #00f5bf;
+}
+
+nav a::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -7px;
+  width: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #00c896, #00f5ff);
+  transition: 0.25s ease;
+}
+
+nav a:hover::after {
+  width: 100%;
+}
+
+.login-link {
+  border: 1px solid rgba(0, 200, 150, 0.55);
+  border-radius: 999px;
+  padding: 8px 18px;
+  color: #00f5bf !important;
+}
+
+.login-link:hover {
+  background: linear-gradient(135deg, #00c896, #00f5ff);
+  color: #00110d !important;
+  box-shadow: 0 0 22px rgba(0, 200, 150, 0.3);
+}
+
+/* Hero */
+.hero {
+  min-height: 88vh;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(0, 200, 150, 0.14), transparent 35%),
+    radial-gradient(circle at 80% 35%, rgba(0, 245, 255, 0.10), transparent 32%);
+}
+
+.hero h1 {
+  color: #ffffff;
+  text-shadow: 0 0 28px rgba(0, 245, 255, 0.16);
+}
+
+.description,
+.contact-text,
+section p {
+  color: #aeb6bf;
+}
+
+.section-title {
+  color: #00f5bf;
+  letter-spacing: 4px;
+  text-shadow: 0 0 16px rgba(0, 200, 150, 0.25);
+}
+
+/* Hero stats */
+.hero-stats div,
+.card,
+.perf-card {
+  background:
+    linear-gradient(145deg, rgba(0, 200, 150, 0.08), rgba(0, 0, 0, 0.92));
+  border: 1px solid rgba(0, 200, 150, 0.22);
+  border-radius: 22px;
+  box-shadow: 0 0 28px rgba(0, 200, 150, 0.08);
+  transition: 0.25s ease;
+}
+
+.hero-stats div:hover,
+.card:hover,
+.perf-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(0, 245, 255, 0.55);
+  box-shadow: 0 0 38px rgba(0, 200, 150, 0.18);
+}
+
+.hero-stats h3,
+.card h3,
+.perf-card h3 {
+  color: #00f5bf;
+}
+
+/* Buttons */
+.btn,
+.contact-links a,
+.contact-form button {
+  border-radius: 999px;
+  background: linear-gradient(135deg, #00c896, #00f5ff);
+  color: #00110d !important;
+  border: none;
+  font-weight: 900;
+  box-shadow: 0 0 24px rgba(0, 200, 150, 0.22);
+  transition: 0.25s ease;
+}
+
+.btn:hover,
+.contact-links a:hover,
+.contact-form button:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 0 34px rgba(0, 245, 255, 0.34);
+}
+
+/* Sections */
+.about,
+.approach,
+.markets,
+.performance,
+.contact,
+.disclaimer,
+.journal {
+  background:
+    radial-gradient(circle at top right, rgba(0, 200, 150, 0.06), transparent 28%),
+    transparent;
+}
+
+/* Section headings */
+section h2 {
+  color: #ffffff;
+  text-shadow: 0 0 22px rgba(0, 245, 255, 0.14);
+}
+
+/* Tags */
+.tags span {
+  background:
+    linear-gradient(145deg, rgba(0, 200, 150, 0.12), rgba(0, 0, 0, 0.9));
+  border: 1px solid rgba(0, 200, 150, 0.28);
+  color: #dffcf5;
+  border-radius: 999px;
+  box-shadow: 0 0 18px rgba(0, 200, 150, 0.08);
+  transition: 0.2s ease;
+}
+
+.tags span:hover {
+  color: #00110d;
+  background: linear-gradient(135deg, #00c896, #00f5ff);
+  transform: translateY(-3px);
+}
+
+/* Contact form */
+.contact-form {
+  background:
+    linear-gradient(145deg, rgba(0, 200, 150, 0.08), rgba(0, 0, 0, 0.94));
+  border: 1px solid rgba(0, 200, 150, 0.22);
+  border-radius: 24px;
+  padding: 22px;
+  box-shadow: 0 0 30px rgba(0, 200, 150, 0.08);
+}
+
+.contact-form input,
+.contact-form textarea {
+  background: #050505;
+  color: white;
+  border: 1px solid rgba(0, 200, 150, 0.22);
+  border-radius: 14px;
+}
+
+.contact-form input:focus,
+.contact-form textarea:focus {
+  outline: none;
+  border-color: #00c896;
+  box-shadow: 0 0 18px rgba(0, 200, 150, 0.18);
+}
+
+/* Disclaimer */
+.disclaimer {
+  border-top: 1px solid rgba(0, 200, 150, 0.18);
+}
+
+.disclaimer p {
+  background:
+    linear-gradient(145deg, rgba(255, 77, 109, 0.08), rgba(0, 0, 0, 0.94));
+  border: 1px solid rgba(255, 77, 109, 0.22);
+  border-radius: 18px;
+  padding: 18px;
+}
+
+/* Footer */
+footer {
+  background: #020202;
+  border-top: 1px solid rgba(0, 200, 150, 0.2);
+  color: #9ca3af;
+}
+
+footer small {
+  color: #00f5bf;
+}
+
+/* Login popup */
+.login-popup {
+  backdrop-filter: blur(12px);
+}
+
+.login-box {
+  background:
+    linear-gradient(145deg, rgba(0, 200, 150, 0.10), rgba(0, 0, 0, 0.96));
+  border: 1px solid rgba(0, 200, 150, 0.3);
+  border-radius: 24px;
+  box-shadow: 0 0 45px rgba(0, 200, 150, 0.2);
+}
+
+.login-box h2 {
+  color: #00f5bf;
+}
+
+.login-box input {
+  background: #050505;
+  color: #fff;
+  border: 1px solid rgba(0, 200, 150, 0.25);
+  border-radius: 14px;
+}
+
+.login-box button {
+  background: linear-gradient(135deg, #00c896, #00f5ff);
+  color: #00110d;
+  border-radius: 14px;
+  font-weight: 900;
+}
+
+.close-login {
+  color: #00f5bf;
+}
+/* ===== Hero Overlap Fix ===== */
+
+.hero {
+  padding: 160px 6% 100px;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.hero .description {
+  max-width: 520px;
+  margin-bottom: 26px;
+  line-height: 1.6;
+}
+
+.hero h1 {
+  max-width: 720px;
+  font-size: clamp(42px, 5vw, 78px);
+  line-height: 1.08;
+  margin-bottom: 36px;
+}
+
+.hero-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(150px, 220px));
+  gap: 18px;
+  margin: 28px 0;
+  max-width: 760px;
+}
+
+.hero-stats div {
+  padding: 18px 20px;
+  min-height: 100px;
+}
+
+.hero-stats h3 {
+  font-size: 18px;
+  margin-bottom: 8px;
+}
+
+.hero-stats p {
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.hero .btn {
+  display: inline-flex;
+  width: fit-content;
+  margin-right: 12px;
+  margin-top: 8px;
+  padding: 13px 24px;
+}
+
+@media (max-width: 768px) {
+  .hero {
+    padding: 130px 6% 70px;
+  }
+
+  .hero-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .hero .btn {
+    display: flex;
+    margin-bottom: 10px;
+  }
+}
+/* Premium Dropdown Fix */
+
+select {
+  background: #050505 !important;
+  color: #ffffff !important;
+  border: 1px solid #00c896 !important;
+}
+
+select option {
+  background: #0b0b0b !important;
+  color: #ffffff !important;
+}
+
+select:focus {
+  background: #050505 !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 15px rgba(0, 200, 150, 0.4);
+}
+/* Stable Journal Layout */
+
+.journal-layout {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(300px, 1fr));
+  gap: 24px;
+  align-items: stretch;
+}
+
+.journal-card {
+  min-height: auto;
+  height: auto;
+}
+
+#tradeHistory {
+  max-height: 520px;
+  overflow-y: auto;
+}
+
+@media (max-width: 1100px) {
+  .journal-layout {
+    grid-template-columns: repeat(2, minmax(280px, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
+  .journal-layout {
+    grid-template-columns: 1fr;
+  }
+}
+.analytics-card{
+  min-width:300px;
+}
+.journal-layout {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 22px;
+  align-items: start;
+}
+
+.journal-card {
+  min-height: auto;
+  height: auto;
 }

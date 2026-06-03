@@ -196,7 +196,7 @@ risk management, and disciplined execution in Indian markets.
           Rules Followed
         </label>
 
-        <button onclick="saveTrade()">Save Trade</button>
+        <button id="saveTradeBtn" onclick="saveTrade()">Save Trade</button>
       </div>
 
       <div class="journal-card psychology-card">
@@ -277,7 +277,77 @@ risk management, and disciplined execution in Indian markets.
 
       <div class="journal-card">
         <h3>Analytics</h3>
+        <div class="analytics-hero">
+  <div>
+    <span>Net P&L</span>
+    <strong id="heroPnl">₹0</strong>
+  </div>
 
+  <div>
+    <span>Win Rate</span>
+    <strong id="heroWinRate">0%</strong>
+  </div>
+
+  <div>
+    <span>Profit Factor</span>
+    <strong id="heroProfitFactor">0</strong>
+  </div>
+</div>
+<div class="psychology-verdict-card" id="psychologyVerdict">
+  <h4>Psychology Verdict</h4>
+  <p>No psychology data yet.</p>
+</div>
+<div class="analytics-grid-pro">
+  <div class="metric-card">
+    <span>Total Trades</span>
+    <strong id="proTotalTrades">0</strong>
+  </div>
+
+  <div class="metric-card">
+    <span>Best Trade</span>
+    <strong id="proBestTrade">₹0</strong>
+  </div>
+
+  <div class="metric-card">
+    <span>Worst Trade</span>
+    <strong id="proWorstTrade">₹0</strong>
+  </div>
+
+  <div class="metric-card">
+    <span>Rules Followed</span>
+    <strong id="proRulesRate">0%</strong>
+  </div>
+
+  <div class="metric-card">
+    <span>Green Days</span>
+    <strong id="proGreenDays">0</strong>
+  </div>
+
+  <div class="metric-card">
+    <span>Red Days</span>
+    <strong id="proRedDays">0</strong>
+  </div>
+</div>
+<button onclick="toggleAdvancedAnalytics()" class="advanced-toggle">
+  Show Advanced Analytics
+</button>
+
+<div id="advancedAnalytics" class="advanced-analytics">
+        <h4>Monthly Performance</h4>
+
+        <p>This Month P&L: ₹<span id="monthPnl">0</span></p>
+        <p>Total Monthly Trades: <span id="monthTrades">0</span></p>
+        <p>Monthly Win Rate: <span id="monthWinRate">0%</span></p>
+        <p>Average Trade: ₹<span id="avgTrade">0</span></p>
+        <p>Average Winner: ₹<span id="avgWinner">0</span></p>
+        <p>Average Loser: ₹<span id="avgLoser">0</span></p>
+        <p>Profit Factor: <span id="profitFactor">0</span></p>
+        <p>Green Days: <span id="greenDays">0</span></p>
+        <p>Red Days: <span id="redDays">0</span></p>
+        <p>Best Winning Streak: <span id="winningStreak">0</span></p>
+        <p>Worst Losing Streak: <span id="losingStreak">0</span></p>
+        <p>Best Day: <span id="bestDay">No Data</span></p>
+        <p>Worst Day: <span id="worstDay">No Data</span></p>
         <p>Total Trades: <span id="totalTrades">0</span></p>
         <p>Total P&L: ₹<span id="totalPnl">0</span></p>
         <p>Win Rate: <span id="winRate">0%</span></p>
@@ -304,6 +374,10 @@ risk management, and disciplined execution in Indian markets.
 <h4>Worst Setup Warning</h4>
 <div id="worstSetupWarning">
   No warning yet.
+  <h4>Setup Analysis</h4>
+<div id="setupAnalysis">
+  No Data
+</div>
 </div>
 
 <h4>Best Time To Trade</h4>
@@ -318,10 +392,11 @@ risk management, and disciplined execution in Indian markets.
       </div>
 
       <div class="journal-card">
+        </div>
         <h3>Graph</h3>
 
         <div class="chart-box">
-  <div id="equityCurve"></div>
+ <svg id="equityCurve" viewBox="0 0 500 220"></svg>
 </div>
       </div>
 
@@ -346,6 +421,24 @@ risk management, and disciplined execution in Indian markets.
 </div>
     <div class="journal-card">
       <h3>Trade History</h3>
+      <button onclick="exportTradesCSV()" class="export-btn">
+  Export CSV
+</button>
+      <div class="trade-filters">
+  <input id="tradeSearch" type="text" placeholder="Search Symbol / Setup">
+
+  <select id="directionFilter">
+    <option value="">All Direction</option>
+    <option value="Long">Long</option>
+    <option value="Short">Short</option>
+  </select>
+
+  <select id="resultFilter">
+    <option value="">All Result</option>
+    <option value="profit">Profit</option>
+    <option value="loss">Loss</option>
+  </select>
+</div>
       <div id="tradeHistory">
         <p class="empty-text">No trades added yet.</p>
       </div>
@@ -504,6 +597,7 @@ risk management, and disciplined execution in Indian markets.
 
   const reveals = document.querySelectorAll('.reveal');
 let trades = [];
+let editingTradeId = null;
 
 function calculateDisciplineScore() {
   const plan = Number(document.getElementById("planRating").value);
@@ -577,6 +671,12 @@ function toggleOptionFields() {
   }
 }
 async function saveTrade() {
+ const saveBtn = document.getElementById("saveTradeBtn");
+
+if (saveBtn.disabled) return;
+
+saveBtn.disabled = true;
+saveBtn.innerText = "Saving...";
   const entry = Number(document.getElementById("tradeEntry").value);
   const exit = Number(document.getElementById("tradeExit").value);
   const qty = Number(document.getElementById("tradeQty").value);
@@ -585,10 +685,14 @@ const lotSize = Number(document.getElementById("lotSize")?.value || document.get
 const lots = Number(document.getElementById("lots")?.value || 1);
   const direction = document.getElementById("tradeDirection").value;
 
-  if (!entry || !exit || !qty || !direction) {
+if (!entry || !exit || !qty || !direction) {
     alert("Please fill entry, exit, quantity and direction.");
+
+    saveBtn.disabled = false;
+    saveBtn.innerText = "Save Trade";
+
     return;
-  }
+}
 
  let finalQty = qty;
 
@@ -628,6 +732,15 @@ futureLotSize: document.getElementById("futureLotSize")?.value || "",
 afterScreenshot: document.getElementById("afterScreenshot").files[0]
   ? URL.createObjectURL(document.getElementById("afterScreenshot").files[0])
   : "",
+  entry: entry,
+exit: exit,
+qty: qty,
+
+plan: Number(document.getElementById("planRating").value),
+sl: Number(document.getElementById("slRating").value),
+emotion: Number(document.getElementById("emotionRating").value),
+risk: Number(document.getElementById("riskRating").value),
+entryRating: Number(document.getElementById("entryRating").value),
     pnl: pnl,
     rules: document.getElementById("rulesFollowed").checked,
     disciplineScore: calculateDisciplineScore(),
@@ -635,40 +748,244 @@ afterScreenshot: document.getElementById("afterScreenshot").files[0]
     note: document.getElementById("psychologyNote").value
   };
 try {
-
   const user = auth.currentUser;
 
-  if (user) {
+if (!user) {
+  alert("Please login first");
 
-    await addDoc(
-      collection(db, "users", user.uid, "trades"),
+  saveBtn.disabled = false;
+  saveBtn.innerText = "Save Trade";
+
+  return;
+}
+
+  if (editingTradeId) {
+    await updateDoc(
+      doc(db, "users", user.uid, "trades", editingTradeId),
       {
         ...trade,
-        createdAt: serverTimestamp()
+        updatedAt: serverTimestamp()
       }
     );
 
-    console.log("Trade saved to Firebase");
+    editingTradeId = null;
+await loadTradesFromFirebase();
+resetTradeForm();
 
+saveBtn.disabled = false;
+saveBtn.innerText = "Save Trade";
+
+alert("Trade updated successfully");
+return;
   }
 
+  await addDoc(
+    collection(db, "users", user.uid, "trades"),
+    {
+      ...trade,
+      createdAt: serverTimestamp()
+    }
+  );
+
+  console.log("Trade saved to Firebase");
+
 } catch (error) {
-
   console.error("Firestore Error:", error);
+  alert(error.message);
 
+  saveBtn.disabled = false;
+  saveBtn.innerText = "Save Trade";
+
+  return;
 }
-  trades.push(trade);
+  await loadTradesFromFirebase();
 
   updateDashboard();
   renderTradeHistory();
   updateTradeReplay(trade);
   updateBestTradeShowcase();
   updateEquityCurve();
-  showProcessWarning(trade);
-  resetTradeForm();
-  document.getElementById("entryReason").value = "";
-}
+ showProcessWarning(trade);
+resetTradeForm();
+document.getElementById("entryReason").value = "";
 
+saveBtn.disabled = false;
+saveBtn.innerText = "Save Trade";
+}
+function updateMonthlyDashboard() {
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
+
+  const monthlyTrades = trades.filter((trade) => {
+    if (!trade.date) return false;
+
+    const tradeDate = new Date(trade.date);
+    return (
+      tradeDate.getMonth() === currentMonth &&
+      tradeDate.getFullYear() === currentYear
+    );
+  });
+
+  const monthTrades = monthlyTrades.length;
+  const monthPnl = monthlyTrades.reduce((sum, trade) => sum + trade.pnl, 0);
+  const wins = monthlyTrades.filter((trade) => trade.pnl > 0);
+  const losses = monthlyTrades.filter((trade) => trade.pnl < 0);
+
+  const monthWinRate = monthTrades
+    ? Math.round((wins.length / monthTrades) * 100)
+    : 0;
+
+  const avgTrade = monthTrades ? monthPnl / monthTrades : 0;
+
+  const avgWinner = wins.length
+    ? wins.reduce((sum, trade) => sum + trade.pnl, 0) / wins.length
+    : 0;
+
+  const avgLoser = losses.length
+    ? losses.reduce((sum, trade) => sum + trade.pnl, 0) / losses.length
+    : 0;
+
+  const grossProfit = wins.reduce((sum, trade) => sum + trade.pnl, 0);
+  const grossLoss = Math.abs(losses.reduce((sum, trade) => sum + trade.pnl, 0));
+
+  const profitFactor = grossLoss
+    ? grossProfit / grossLoss
+    : grossProfit > 0
+      ? grossProfit
+      : 0;
+
+  const dayStats = {};
+
+  monthlyTrades.forEach((trade) => {
+    if (!dayStats[trade.date]) {
+      dayStats[trade.date] = 0;
+    }
+
+    dayStats[trade.date] += trade.pnl;
+  });
+
+  let bestDay = "No Data";
+  let worstDay = "No Data";
+  let bestDayPnl = -Infinity;
+  let worstDayPnl = Infinity;
+
+  Object.entries(dayStats).forEach(([date, pnl]) => {
+    if (pnl > bestDayPnl) {
+      bestDayPnl = pnl;
+      bestDay = `${date} ₹${pnl.toFixed(2)}`;
+    }
+
+    if (pnl < worstDayPnl) {
+      worstDayPnl = pnl;
+      worstDay = `${date} ₹${pnl.toFixed(2)}`;
+    }
+  });
+
+  document.getElementById("monthPnl").innerText = monthPnl.toFixed(2);
+  document.getElementById("monthTrades").innerText = monthTrades;
+  document.getElementById("monthWinRate").innerText = monthWinRate + "%";
+  document.getElementById("avgTrade").innerText = avgTrade.toFixed(2);
+  document.getElementById("avgWinner").innerText = avgWinner.toFixed(2);
+  document.getElementById("avgLoser").innerText = avgLoser.toFixed(2);
+  document.getElementById("profitFactor").innerText = profitFactor.toFixed(2);
+  document.getElementById("bestDay").innerText = bestDay;
+  document.getElementById("worstDay").innerText = worstDay;
+  let greenDays = 0;
+let redDays = 0;
+
+Object.values(dayStats).forEach((pnl) => {
+  if (pnl > 0) greenDays++;
+  if (pnl < 0) redDays++;
+});
+
+let winningStreak = 0;
+let losingStreak = 0;
+let currentWinStreak = 0;
+let currentLossStreak = 0;
+
+monthlyTrades.forEach((trade) => {
+  if (trade.pnl > 0) {
+    currentWinStreak++;
+    currentLossStreak = 0;
+  } else if (trade.pnl < 0) {
+    currentLossStreak++;
+    currentWinStreak = 0;
+  } else {
+    currentWinStreak = 0;
+    currentLossStreak = 0;
+  }
+
+  winningStreak = Math.max(winningStreak, currentWinStreak);
+  losingStreak = Math.max(losingStreak, currentLossStreak);
+});
+
+document.getElementById("greenDays").innerText = greenDays;
+document.getElementById("redDays").innerText = redDays;
+document.getElementById("proGreenDays").innerText = greenDays;
+document.getElementById("proRedDays").innerText = redDays;
+document.getElementById("heroProfitFactor").innerText = profitFactor.toFixed(2);
+document.getElementById("winningStreak").innerText = winningStreak;
+document.getElementById("losingStreak").innerText = losingStreak;
+}
+function toggleAdvancedAnalytics() {
+  const box = document.getElementById("advancedAnalytics");
+  const btn = document.querySelector(".advanced-toggle");
+
+  if (box.style.display === "block") {
+    box.style.display = "none";
+    btn.innerText = "Show Advanced Analytics";
+  } else {
+    box.style.display = "block";
+    btn.innerText = "Hide Advanced Analytics";
+  }
+}
+function updatePsychologyVerdict() {
+  const box = document.getElementById("psychologyVerdict");
+
+  if (!trades.length) {
+    box.innerHTML = `
+      <h4>Psychology Verdict</h4>
+      <p>No psychology data yet.</p>
+    `;
+    return;
+  }
+
+  const avgPlan = trades.reduce((s, t) => s + (Number(t.plan) || 0), 0) / trades.length;
+  const avgSl = trades.reduce((s, t) => s + (Number(t.sl) || 0), 0) / trades.length;
+  const avgEmotion = trades.reduce((s, t) => s + (Number(t.emotion) || 0), 0) / trades.length;
+  const avgRisk = trades.reduce((s, t) => s + (Number(t.risk) || 0), 0) / trades.length;
+  const avgEntry = trades.reduce((s, t) => s + (Number(t.entryRating) || 0), 0) / trades.length;
+
+  const totalScore = avgPlan + avgSl + avgEmotion + avgRisk + avgEntry;
+  const psychologyScore = Math.round(totalScore * 4);
+
+  let verdict = "";
+  let suggestion = "";
+
+  if (psychologyScore >= 85) {
+    verdict = "🔥 Strong Trading Psychology";
+    suggestion = "Discipline strong hai. Ab size badhane se pehle consistency maintain karo.";
+  } else if (psychologyScore >= 70) {
+    verdict = "📈 Good, But Needs Control";
+    suggestion = "Trading okay hai, lekin emotion aur execution ko aur tight karo.";
+  } else if (psychologyScore >= 50) {
+    verdict = "⚠️ Weak Psychology Zone";
+    suggestion = "Abhi size small rakho. Rules aur emotions pe kaam karo.";
+  } else {
+    verdict = "🚨 Dangerous Trading Behaviour";
+    suggestion = "Overtrading / emotion risk high hai. Capital protect karo, size reduce karo.";
+  }
+
+  box.innerHTML = `
+    <h4>Psychology Verdict</h4>
+    <p><strong>${verdict}</strong></p>
+    <p>Overall Psychology Score: <strong>${psychologyScore}/100</strong></p>
+    <p>Plan: ${avgPlan.toFixed(1)}/5 | SL: ${avgSl.toFixed(1)}/5 | Emotion: ${avgEmotion.toFixed(1)}/5</p>
+    <p>Risk: ${avgRisk.toFixed(1)}/5 | Entry: ${avgEntry.toFixed(1)}/5</p>
+    <p>${suggestion}</p>
+  `;
+}
 function updateDashboard() {
   const totalTrades = trades.length;
   const totalPnl = trades.reduce((sum, trade) => sum + trade.pnl, 0);
@@ -722,7 +1039,27 @@ trades.forEach((trade) => {
     setupStats[setup].wins++;
   }
 });
+const setupAnalysis = document.getElementById("setupAnalysis");
+setupAnalysis.innerHTML = "";
 
+Object.entries(setupStats).forEach((item) => {
+  const setupName = item[0];
+  const data = item[1];
+  const winRate = Math.round((data.wins / data.trades) * 100);
+
+  setupAnalysis.innerHTML += `
+    <div class="setup-analysis-row">
+      <strong>${setupName}</strong><br>
+      Trades: ${data.trades}<br>
+      Win Rate: ${winRate}%<br>
+      P&L: ₹${data.pnl.toFixed(2)}
+    </div>
+  `;
+});
+
+if (Object.keys(setupStats).length === 0) {
+  setupAnalysis.innerHTML = "No Data";
+}
 const sortedSetups = Object.entries(setupStats)
   .sort((a, b) => b[1].pnl - a[1].pnl);
 
@@ -873,6 +1210,12 @@ if (worstTime) {
   document.getElementById("bestTrade").innerText = bestTrade.toFixed(2);
   document.getElementById("worstTrade").innerText = worstTrade.toFixed(2);
   document.getElementById("topMistake").innerText = topMistake;
+  document.getElementById("heroPnl").innerText = "₹" + totalPnl.toFixed(2);
+document.getElementById("heroWinRate").innerText = winRate + "%";
+document.getElementById("proTotalTrades").innerText = totalTrades;
+document.getElementById("proBestTrade").innerText = "₹" + bestTrade.toFixed(2);
+document.getElementById("proWorstTrade").innerText = "₹" + worstTrade.toFixed(2);
+document.getElementById("proRulesRate").innerText = rulesRate + "%";
   const topMistakesList = document.getElementById("topMistakesList");
 topMistakesList.innerHTML = "";
 const mistakeCostList = document.getElementById("mistakeCostList");
@@ -934,6 +1277,7 @@ if (sortedMistakes.length === 0) {
     topMistakesList.innerHTML += `<li>${item[0]} - ${item[1]} times</li>`;
   });
 }
+
 }
 function classifyTrade(trade) {
   const isWin = trade.pnl > 0;
@@ -981,25 +1325,66 @@ function showProcessWarning(trade) {
   }
 }
 function updateEquityCurve() {
-  const equityCurve = document.getElementById("equityCurve");
-  equityCurve.innerHTML = "";
+  const chart = document.getElementById("equityCurve");
+  chart.innerHTML = "";
+
+  if (!trades.length) return;
 
   let runningTotal = 0;
-
-  trades.forEach((trade) => {
+  const points = trades.map((trade) => {
     runningTotal += trade.pnl;
+    return runningTotal;
+  });
 
-    const bar = document.createElement("div");
-    bar.classList.add("equity-bar");
+  const width = 500;
+  const height = 220;
+  const padding = 25;
 
-    if (runningTotal < 0) {
-      bar.classList.add("loss-bar");
-    }
+  const min = Math.min(...points, 0);
+  const max = Math.max(...points, 0);
 
-    const height = Math.min(Math.abs(runningTotal) / 100, 180);
-    bar.style.height = height + "px";
+  const range = max - min || 1;
 
-    equityCurve.appendChild(bar);
+  const getX = (index) => {
+    if (points.length === 1) return width / 2;
+    return padding + (index * (width - padding * 2)) / (points.length - 1);
+  };
+
+  const getY = (value) => {
+    return height - padding - ((value - min) / range) * (height - padding * 2);
+  };
+
+  const zeroY = getY(0);
+
+  chart.innerHTML += `
+    <line
+      x1="${padding}"
+      y1="${zeroY}"
+      x2="${width - padding}"
+      y2="${zeroY}"
+      class="equity-zero-line"
+    />
+  `;
+
+  const pathData = points
+    .map((point, index) => {
+      return `${index === 0 ? "M" : "L"} ${getX(index)} ${getY(point)}`;
+    })
+    .join(" ");
+
+  chart.innerHTML += `
+    <path d="${pathData}" class="equity-line"></path>
+  `;
+
+  points.forEach((point, index) => {
+    chart.innerHTML += `
+      <circle
+        cx="${getX(index)}"
+        cy="${getY(point)}"
+        r="4"
+        class="equity-dot"
+      ></circle>
+    `;
   });
 }
 function updateBestTradeShowcase() {
@@ -1058,6 +1443,11 @@ function updateBestTradeShowcase() {
 }
 function updateTradeReplay(trade) {
   const replay = document.getElementById("tradeReplay");
+
+  if (!trade) {
+    replay.innerHTML = "<p class='empty-text'>Save a trade to view replay.</p>";
+    return;
+  }
   const tradeClass = classifyTrade(trade);
   const pnlClass = trade.pnl >= 0 ? "profit" : "loss";
 
@@ -1100,8 +1490,25 @@ function updateTradeReplay(trade) {
 function renderTradeHistory() {
   const history = document.getElementById("tradeHistory");
   history.innerHTML = "";
+const searchText = document.getElementById("tradeSearch").value.toLowerCase();
+const directionValue = document.getElementById("directionFilter").value;
+const resultValue = document.getElementById("resultFilter").value;
 
-  trades.forEach((trade) => {
+const filteredTrades = trades.filter((trade) => {
+  const symbolMatch = (trade.symbol || "").toLowerCase().includes(searchText);
+  const setupMatch = (trade.setup || "").toLowerCase().includes(searchText);
+
+  const directionMatch =
+    !directionValue || trade.direction === directionValue;
+
+  const resultMatch =
+    !resultValue ||
+    (resultValue === "profit" && trade.pnl >= 0) ||
+    (resultValue === "loss" && trade.pnl < 0);
+
+  return (symbolMatch || setupMatch) && directionMatch && resultMatch;
+});
+filteredTrades.slice(0, 10).forEach((trade) => {
     const pnlClass = trade.pnl >= 0 ? "profit" : "loss";
     const tradeClass = classifyTrade(trade);
 
@@ -1130,10 +1537,39 @@ ${tradeClass}
     </div>
 
     <div>
-      <strong class="${pnlClass}">
+    <strong class="${pnlClass}">
         ₹${trade.pnl.toFixed(2)}
-      </strong>
-    </div>
+    </strong>
+
+    <br><br>
+<button
+    onclick="editTrade('${trade.id}')"
+    style="
+        background:#008cff;
+        color:white;
+        border:none;
+        padding:4px 8px;
+        border-radius:4px;
+        cursor:pointer;
+        margin-bottom:5px;
+    ">
+    ✏️ Edit
+</button>
+
+<br>
+    <button
+        onclick="deleteTrade('${trade.id}')"
+        style="
+            background:#ff4444;
+            color:white;
+            border:none;
+            padding:4px 8px;
+            border-radius:4px;
+            cursor:pointer;
+        ">
+        🗑 Delete
+    </button>
+</div>
 
     <div>
 
@@ -1155,7 +1591,114 @@ ${tradeClass}
 `;
   });
 }
+document.getElementById("tradeSearch").addEventListener("input", renderTradeHistory);
 
+document.getElementById("directionFilter").addEventListener("change", renderTradeHistory);
+
+document.getElementById("resultFilter").addEventListener("change", renderTradeHistory);
+function exportTradesCSV() {
+
+  if (!trades.length) {
+    alert("No trades found");
+    return;
+  }
+
+  let csv = "Date,Time,Symbol,Segment,Direction,Entry,Exit,Quantity,Setup,Entry Reason,Mistake,Rules Followed,Trader Score,Trade Quality,PNL,Note\n";
+
+  trades.forEach((trade) => {
+csv +=
+  `${trade.date || ""},` +
+  `${trade.time || ""},` +
+  `${trade.symbol || ""},` +
+  `${trade.segment || ""},` +
+  `${trade.direction || ""},` +
+  `${trade.entry || ""},` +
+  `${trade.exit || ""},` +
+  `${trade.qty || ""},` +
+  `${trade.setup || ""},` +
+  `${trade.entryReason || ""},` +
+  `${trade.mistake || ""},` +
+  `${trade.rules ? "Yes" : "No"},` +
+  `${(trade.disciplineScore || 0) * 4},` +
+  `${trade.tradeQuality || ""},` +
+  `${trade.pnl || 0},` +
+  `"${trade.note || ""}"\n`;
+  });
+
+  const blob = new Blob([csv], {
+    type: "text/csv"
+  });
+
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement("a");
+
+  a.href = url;
+  a.download = "DDTradingJournal.csv";
+  a.click();
+
+  window.URL.revokeObjectURL(url);
+}
+async function deleteTrade(tradeId) {
+
+    if (!confirm("Delete this trade?")) return;
+
+    try {
+
+        const user = auth.currentUser;
+
+        await deleteDoc(
+            doc(db, "users", user.uid, "trades", tradeId)
+        );
+
+        await loadTradesFromFirebase();
+
+        alert("Trade deleted successfully");
+
+    } catch (error) {
+
+        console.error(error);
+        alert(error.message);
+
+    }
+}
+function editTrade(tradeId) {
+    const trade = trades.find(t => t.id === tradeId);
+
+    if (!trade) {
+        alert("Trade not found");
+        return;
+    }
+
+    editingTradeId = tradeId;
+
+    document.getElementById("tradeDate").value = trade.date || "";
+    document.getElementById("tradeTime").value = trade.time || "";
+    document.getElementById("tradeSymbol").value = trade.symbol || "";
+    document.getElementById("tradeSegment").value = trade.segment || "";
+    document.getElementById("tradeDirection").value = trade.direction || "";
+    document.getElementById("tradeEntry").value = trade.entry || "";
+    document.getElementById("tradeExit").value = trade.exit || "";
+    document.getElementById("tradeQty").value = trade.qty || "";
+    document.getElementById("entryReason").value = trade.entryReason || "";
+    document.getElementById("tradeSetup").value = trade.setup || "";
+    document.getElementById("tradeMistake").value = trade.mistake || "";
+    document.getElementById("rulesFollowed").checked = trade.rules || false;
+    document.getElementById("planRating").value = trade.plan || "0";
+    document.getElementById("slRating").value = trade.sl || "0";
+    document.getElementById("emotionRating").value = trade.emotion || "0";
+    document.getElementById("riskRating").value = trade.risk || "0";
+    document.getElementById("entryRating").value = trade.entryRating || "0";
+    document.getElementById("tradeQuality").value = trade.tradeQuality || "";
+    document.getElementById("psychologyNote").value = trade.note || "";
+
+    calculateDisciplineScore();
+
+    document.getElementById("journal").scrollIntoView({
+        behavior: "smooth"
+    });
+
+    alert("Trade loaded for editing. Update details and click Save Trade.");
+}
 function resetTradeForm() {
   document.getElementById("tradeDate").value = "";
   document.getElementById("tradeSymbol").value = "";
@@ -1173,6 +1716,12 @@ document.getElementById("riskRating").value = "0";
 document.getElementById("entryRating").value = "0";
 document.getElementById("tradeQuality").value = "";
   document.getElementById("psychologyNote").value = "";
+  document.getElementById("tradeTime").value = "";
+document.getElementById("entryReason").value = "";
+document.getElementById("beforeScreenshot").value = "";
+document.getElementById("afterScreenshot").value = "";
+
+editingTradeId = null;
   calculateDisciplineScore();
 }
   function revealSections() {

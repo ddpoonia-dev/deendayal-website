@@ -15,7 +15,10 @@ import {
   serverTimestamp,
   getDocs,
   query,
-  orderBy
+  orderBy,
+  deleteDoc,
+  doc,
+  updateDoc
 } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 
 // Firebase Config
@@ -45,6 +48,9 @@ window.serverTimestamp = serverTimestamp;
 window.createUserWithEmailAndPassword = createUserWithEmailAndPassword;
 window.signInWithEmailAndPassword = signInWithEmailAndPassword;
 window.signOut = signOut;
+window.deleteDoc = deleteDoc;
+window.doc = doc;
+window.updateDoc = updateDoc;
 
 console.log("Firebase Connected Successfully");
 async function loadTradesFromFirebase() {
@@ -60,14 +66,18 @@ async function loadTradesFromFirebase() {
         trades = [];
 
         snapshot.forEach((doc) => {
-            trades.push(doc.data());
+            trades.push({
+                 id: doc.id,
+                ...doc.data()
+            });
         });
 
-        updateDashboard();
-renderTradeHistory();
-updateBestTradeShowcase();
-updateTradeReplay(trades[0]);
-updateEquityCurve();
+            updateDashboard();
+    renderTradeHistory();
+    updateBestTradeShowcase();
+    updateTradeReplay(trades[0]);
+    updateEquityCurve();
+    updateMonthlyDashboard();
 
 console.log("Trades loaded:", trades.length);
 
@@ -75,6 +85,7 @@ console.log("Trades loaded:", trades.length);
         console.error("Load Error:", error);
     }
 }
+window.loadTradesFromFirebase = loadTradesFromFirebase;
 window.registerUser = async function () {
   const email = document.getElementById("loginEmail").value;
   const password = document.getElementById("loginPassword").value;
@@ -103,14 +114,14 @@ closeLoginPopup();
     alert(error.message);
   }
 };
-onAuthStateChanged(auth, (user) => {
+onAuthStateChanged(auth, async (user) => {
 
   const loginBtn = document.querySelector(".login-link");
 
   if (!loginBtn) return;
 
   if (user) {
-
+    await loadTradesFromFirebase();
     loginBtn.textContent = "Logout";
 
     loginBtn.onclick = async () => {
@@ -119,7 +130,12 @@ onAuthStateChanged(auth, (user) => {
     };
 
   } else {
-
+trades = [];
+updateDashboard();
+renderTradeHistory();
+updateBestTradeShowcase();
+updateTradeReplay(null);
+updateEquityCurve();
     loginBtn.textContent = "Login";
 
     loginBtn.onclick = () => {
@@ -127,8 +143,4 @@ onAuthStateChanged(auth, (user) => {
     };
   }
 });
-onAuthStateChanged(auth, async (user) => {
-    if (user) {
-        await loadTradesFromFirebase();
-    }
-});
+

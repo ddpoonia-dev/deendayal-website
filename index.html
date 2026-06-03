@@ -59,393 +59,360 @@ risk management, and disciplined execution in Indian markets.
   </section>
 
 <section class="journal reveal" id="journal">
-  <p class="section-title">Trading Journal</p>
-  <h2>Trade Like a Professional</h2>
 
-  <p class="contact-text">
-    Track your trades, review your psychology, monitor mistakes, and improve your execution quality.
-  </p>
+  <div class="journal-topbar">
+    <div>
+      <p class="section-title">Trading Journal</p>
+      <h2>Professional Trading Dashboard</h2>
+      <p>Track trades, psychology, mistakes, P&L and execution quality.</p>
+    </div>
 
-  <div class="journal-dashboard">
+    <button class="add-day-btn" onclick="openTradeModal()">
+      + Add Trading Day
+    </button>
+  </div>
 
-    <div class="tracker-card">
-      <h3>Live Tracker</h3>
+  <div class="journal-filters">
+    <input id="tradeSearch" type="text" placeholder="Search symbol / setup">
+    <select id="directionFilter">
+      <option value="">All Direction</option>
+      <option value="Long">Long</option>
+      <option value="Short">Short</option>
+    </select>
+    <select id="resultFilter">
+      <option value="">All Result</option>
+      <option value="profit">Profit</option>
+      <option value="loss">Loss</option>
+    </select>
+  </div>
 
-      <div class="tracker-grid">
-        <div>
-          <span>Total Trades</span>
-          <strong id="liveTotalTrades">0</strong>
-        </div>
+  <div class="tracker-card dashboard-hero-card">
+    <h3>Live Tracker</h3>
 
-        <div>
-          <span>Total P&L</span>
-          <strong id="liveTotalPnl">₹0</strong>
-        </div>
-
-        <div>
-          <span>Win Rate</span>
-          <strong id="liveWinRate">0%</strong>
-        </div>
-
-        <div>
-          <span>Rules Followed</span>
-          <strong id="liveRulesRate">0%</strong>
-        </div>
+    <div class="tracker-grid">
+      <div>
+        <span>Total Trades</span>
+        <strong id="totalTrades">0</strong>
+      </div>
+      <div>
+        <span>Total P&L</span>
+        <strong id="totalPnl">₹0</strong>
+      </div>
+      <div>
+        <span>Win Rate</span>
+        <strong id="winRate">0%</strong>
+      </div>
+      <div>
+        <span>Rules Followed</span>
+        <strong id="rulesRate">0%</strong>
       </div>
     </div>
-    <div class="process-warning" id="processWarning">
-  Add a trade to get process feedback.
-</div>
+  </div>
 
-    <div class="journal-layout">
+  <div id="processWarning" class="process-warning">
+    Add a trade to get process feedback.
+  </div>
 
-      <div class="journal-card">
-        <h3>Add Trade</h3>
+  <div class="pro-dashboard-grid">
 
-        <input id="tradeDate" type="date">
-        <input id="tradeTime" type="time">
+    <div class="journal-card full-width-card">
+      <h3>Trading Activity</h3>
+      <div id="calendarHeatmap"></div>
+    </div>
 
-        <input id="tradeSymbol" type="text" placeholder="Symbol / Stock">
-        <select id="tradeSegment" onchange="toggleOptionFields()">
-  <option value="">Trade Segment</option>
-  <option value="Equity">Equity / Stock</option>
-  <option value="Futures">Futures</option>
-  <option value="Options">Options</option>
-</select>
-<div id="optionFields" style="display:none;">
+    <div class="journal-card">
+      <h3>Analytics</h3>
 
-  <select id="optionType">
-    <option value="">Option Type</option>
-    <option value="CE">Call / CE</option>
-    <option value="PE">Put / PE</option>
-  </select>
-
-  <input id="strikePrice" type="number" placeholder="Strike Price">
-
-  <input id="expiryDate" type="date" placeholder="Expiry Date">
-
-  <input id="premium" type="number" placeholder="Option Premium">
-
-  <input id="lotSize" type="number" placeholder="Lot Size">
-
-  <input id="lots" type="number" placeholder="Number of Lots">
-
-</div>
-<div id="futureFields" style="display:none;">
-  <input id="futureExpiry" type="date" placeholder="Futures Expiry">
-  <input id="futureLotSize" type="number" placeholder="Lot Size">
-</div>
-
-        <select id="tradeDirection">
-          <option value="">Trade Direction</option>
-          <option value="Long">Long / Buy</option>
-          <option value="Short">Short / Sell</option>
-        </select>
-
-        <input id="tradeEntry" type="number" placeholder="Entry Price">
-
-        <input id="tradeExit" type="number" placeholder="Exit Price">
-
-        <input id="tradeQty" type="number" placeholder="Quantity">
-<select id="entryReason">
-  <option value="">Why did I enter?</option>
-  <option>Level Breakout</option>
-  <option>Retest Confirmation</option>
-  <option>VWAP Support</option>
-  <option>Trendline Break</option>
-  <option>Reversal Candle</option>
-  <option>Volume Confirmation</option>
-  <option>News Based</option>
-  <option>Random Entry</option>
-</select>
-        <select id="tradeSetup">
-          <option value="">Setup Type</option>
-          <option>Breakout</option>
-          <option>Pullback</option>
-          <option>Support/Resistance</option>
-          <option>VWAP Reversal</option>
-          <option>Trend Continuation</option>
-          <option>Random / No Setup</option>
-        </select>
-
-        <select id="tradeMistake">
-          <option value="">Mistake</option>
-          <option>No Mistake</option>
-          <option>FOMO Entry</option>
-          <option>Revenge Trade</option>
-          <option>Early Entry</option>
-          <option>Late Exit</option>
-          <option>Over Trading</option>
-          <option>Ignored Stop Loss</option>
-          <option>Oversized Position</option>
-        </select>
-        <label>Before Entry Screenshot</label>
-<input
-  id="beforeScreenshot"
-  type="file"
-  accept="image/*">
-
-<label>After Exit Screenshot</label>
-<input
-  id="afterScreenshot"
-  type="file"
-  accept="image/*">
-
-        <label class="check-row">
-          <input id="rulesFollowed" type="checkbox">
-          Rules Followed
-        </label>
-
-        <button id="saveTradeBtn" onclick="saveTrade()">Save Trade</button>
+      <div class="analytics-hero">
+        <div>
+          <span>Net P&L</span>
+          <strong id="heroPnl">₹0</strong>
+        </div>
+        <div>
+          <span>Win Rate</span>
+          <strong id="heroWinRate">0%</strong>
+        </div>
+        <div>
+          <span>Profit Factor</span>
+          <strong id="heroProfitFactor">0</strong>
+        </div>
       </div>
 
-      <div class="journal-card psychology-card">
-  <h3>Psychology Check</h3>
+      <div class="psychology-verdict-card" id="psychologyVerdict">
+        <h4>Psychology Verdict</h4>
+        <p>No psychology data yet.</p>
+      </div>
 
-  <p class="mini-title">Rate yourself honestly from 1 to 5:</p>
+      <div class="analytics-grid-pro">
+        <div class="metric-card">
+          <span>Total Trades</span>
+          <strong id="proTotalTrades">0</strong>
+        </div>
+        <div class="metric-card">
+          <span>Best Trade</span>
+          <strong id="proBestTrade">₹0</strong>
+        </div>
+        <div class="metric-card">
+          <span>Worst Trade</span>
+          <strong id="proWorstTrade">₹0</strong>
+        </div>
+        <div class="metric-card">
+          <span>Rules Followed</span>
+          <strong id="proRulesRate">0%</strong>
+        </div>
+        <div class="metric-card">
+          <span>Green Days</span>
+          <strong id="proGreenDays">0</strong>
+        </div>
+        <div class="metric-card">
+          <span>Red Days</span>
+          <strong id="proRedDays">0</strong>
+        </div>
+      </div>
 
-  <label>Plan Followed</label>
-  <select id="planRating">
-    <option value="0">Select Rating</option>
-    <option value="1">1 - Poor</option>
-    <option value="2">2 - Weak</option>
-    <option value="3">3 - Average</option>
-    <option value="4">4 - Good</option>
-    <option value="5">5 - Excellent</option>
-  </select>
+      <button onclick="toggleAdvancedAnalytics()" class="advanced-toggle">
+        Show Advanced Analytics
+      </button>
 
-  <label>Stop Loss Discipline</label>
-  <select id="slRating">
-    <option value="0">Select Rating</option>
-    <option value="1">1 - Poor</option>
-    <option value="2">2 - Weak</option>
-    <option value="3">3 - Average</option>
-    <option value="4">4 - Good</option>
-    <option value="5">5 - Excellent</option>
-  </select>
-
-  <label>Emotion Control</label>
-  <select id="emotionRating">
-    <option value="0">Select Rating</option>
-    <option value="1">1 - Poor</option>
-    <option value="2">2 - Weak</option>
-    <option value="3">3 - Average</option>
-    <option value="4">4 - Good</option>
-    <option value="5">5 - Excellent</option>
-  </select>
-
-  <label>Risk Management</label>
-  <select id="riskRating">
-    <option value="0">Select Rating</option>
-    <option value="1">1 - Poor</option>
-    <option value="2">2 - Weak</option>
-    <option value="3">3 - Average</option>
-    <option value="4">4 - Good</option>
-    <option value="5">5 - Excellent</option>
-  </select>
-
-  <label>Entry Quality</label>
-  <select id="entryRating">
-    <option value="0">Select Rating</option>
-    <option value="1">1 - Poor</option>
-    <option value="2">2 - Weak</option>
-    <option value="3">3 - Average</option>
-    <option value="4">4 - Good</option>
-    <option value="5">5 - Excellent</option>
-  </select>
-
-  <select id="tradeQuality">
-    <option value="">Trade Quality</option>
-    <option value="A+">A+ Setup</option>
-    <option value="A">A Setup</option>
-    <option value="B">B Setup</option>
-    <option value="C">C Setup</option>
-    <option value="F">F Setup / Gamble</option>
-  </select>
-
-  <textarea id="psychologyNote" placeholder="What was going on in my mind during this trade?"></textarea>
-
-  <div class="mind-score">
-    Trader Score:
-    <strong id="disciplineScore">0/100</strong>
-    <div id="traderGrade">
-        Trader Grade: N/A</div>
-  </div>
-</div>
-
-    <div class="journal-layout">
-
-      <div class="journal-card">
-        <h3>Analytics</h3>
-        <div class="analytics-hero">
-  <div>
-    <span>Net P&L</span>
-    <strong id="heroPnl">₹0</strong>
-  </div>
-
-  <div>
-    <span>Win Rate</span>
-    <strong id="heroWinRate">0%</strong>
-  </div>
-
-  <div>
-    <span>Profit Factor</span>
-    <strong id="heroProfitFactor">0</strong>
-  </div>
-</div>
-<div class="psychology-verdict-card" id="psychologyVerdict">
-  <h4>Psychology Verdict</h4>
-  <p>No psychology data yet.</p>
-</div>
-<div class="analytics-grid-pro">
-  <div class="metric-card">
-    <span>Total Trades</span>
-    <strong id="proTotalTrades">0</strong>
-  </div>
-
-  <div class="metric-card">
-    <span>Best Trade</span>
-    <strong id="proBestTrade">₹0</strong>
-  </div>
-
-  <div class="metric-card">
-    <span>Worst Trade</span>
-    <strong id="proWorstTrade">₹0</strong>
-  </div>
-
-  <div class="metric-card">
-    <span>Rules Followed</span>
-    <strong id="proRulesRate">0%</strong>
-  </div>
-
-  <div class="metric-card">
-    <span>Green Days</span>
-    <strong id="proGreenDays">0</strong>
-  </div>
-
-  <div class="metric-card">
-    <span>Red Days</span>
-    <strong id="proRedDays">0</strong>
-  </div>
-</div>
-<button onclick="toggleAdvancedAnalytics()" class="advanced-toggle">
-  Show Advanced Analytics
-</button>
-
-<div id="advancedAnalytics" class="advanced-analytics">
+      <div id="advancedAnalytics" class="advanced-analytics">
         <h4>Monthly Performance</h4>
-
         <p>This Month P&L: ₹<span id="monthPnl">0</span></p>
         <p>Total Monthly Trades: <span id="monthTrades">0</span></p>
         <p>Monthly Win Rate: <span id="monthWinRate">0%</span></p>
         <p>Average Trade: ₹<span id="avgTrade">0</span></p>
         <p>Average Winner: ₹<span id="avgWinner">0</span></p>
         <p>Average Loser: ₹<span id="avgLoser">0</span></p>
-        <p>Profit Factor: <span id="profitFactor">0</span></p>
-        <p>Green Days: <span id="greenDays">0</span></p>
-        <p>Red Days: <span id="redDays">0</span></p>
-        <p>Best Winning Streak: <span id="winningStreak">0</span></p>
-        <p>Worst Losing Streak: <span id="losingStreak">0</span></p>
         <p>Best Day: <span id="bestDay">No Data</span></p>
         <p>Worst Day: <span id="worstDay">No Data</span></p>
-        <p>Total Trades: <span id="totalTrades">0</span></p>
-        <p>Total P&L: ₹<span id="totalPnl">0</span></p>
-        <p>Win Rate: <span id="winRate">0%</span></p>
-        <p>Rules Followed: <span id="rulesRate">0%</span></p>
-        <p>Best Trade: ₹<span id="bestTrade">0</span></p>
-        <p>Worst Trade: ₹<span id="worstTrade">0</span></p>
-        <p>Most Repeated Mistake: <span id="topMistake">None</span></p>
-        <p>Top 3 Mistakes:</p>
-<h4>Top 3 Mistakes</h4>
-<ul id="topMistakesList">
-  <li>None</li>
-</ul>
 
-<h4>Mistake Cost Analysis</h4>
-<ul id="mistakeCostList">
-  <li>No Data</li>
-</ul>
+        <h4>Top 3 Mistakes</h4>
+        <ul id="topMistakesList">
+          <li>No Data</li>
+        </ul>
 
-<h4>Best Setup Finder</h4>
-<ul id="bestSetupList">
-  <li>No Data</li>
-</ul>
+        <h4>Mistake Cost Analysis</h4>
+        <ul id="mistakeCostList">
+          <li>No Data</li>
+        </ul>
 
-<h4>Worst Setup Warning</h4>
-<div id="worstSetupWarning">
-  No warning yet.
-  <h4>Setup Analysis</h4>
-<div id="setupAnalysis">
-  No Data
-</div>
-</div>
+        <h4>Best Setup Finder</h4>
+        <ul id="bestSetupList">
+          <li>No Data</li>
+        </ul>
 
-<h4>Best Time To Trade</h4>
-<ul id="bestTimeList">
-  <li>No Data</li>
-</ul>
+        <h4>Worst Setup Warning</h4>
+        <div id="worstSetupWarning">No warning yet.</div>
 
-<h4>Worst Time Warning</h4>
-<div id="worstTimeWarning">
-  No warning yet.
-</div>
+        <h4>Best Time To Trade</h4>
+        <ul id="bestTimeList">
+          <li>No Data</li>
+        </ul>
+
+        <h4>Worst Time Warning</h4>
+        <div id="worstTimeWarning">No warning yet.</div>
+
+        <h4>Setup Analysis</h4>
+        <div id="setupAnalysis">No Data</div>
       </div>
-
-      <div class="journal-card">
-        </div>
-        <h3>Graph</h3>
-
-        <div class="chart-box">
- <svg id="equityCurve" viewBox="0 0 500 220"></svg>
-</div>
-      </div>
-
     </div>
+
     <div class="journal-card">
-  <h3>Best Trade Showcase</h3>
+      <h3>Performance Chart</h3>
+      <div class="chart-box">
+        <svg id="equityCurve" viewBox="0 0 500 220"></svg>
+      </div>
+    </div>
 
-  <div id="bestTradeShowcase">
-    <p class="empty-text">
-      Save trades to find your best trade.
-    </p>
-  </div>
-</div>
-<div class="journal-card">
-  <h3>Trade Replay Card</h3>
-
-  <div id="tradeReplay">
-    <p class="empty-text">
-      Save a trade to view replay.
-    </p>
-  </div>
-</div>
     <div class="journal-card">
-      <h3>Trade History</h3>
-      <button onclick="exportTradesCSV()" class="export-btn">
-  Export CSV
-</button>
-      <div class="trade-filters">
-  <input id="tradeSearch" type="text" placeholder="Search Symbol / Setup">
+      <h3>Best Trade Showcase</h3>
+      <div id="bestTradeShowcase">
+        <p class="empty-text">Save trades to find your best trade.</p>
+      </div>
+    </div>
 
-  <select id="directionFilter">
-    <option value="">All Direction</option>
-    <option value="Long">Long</option>
-    <option value="Short">Short</option>
-  </select>
+    <div class="journal-card">
+      <h3>Trade Replay Card</h3>
+      <div id="tradeReplay">
+        <p class="empty-text">Save a trade to view replay.</p>
+      </div>
+    </div>
 
-  <select id="resultFilter">
-    <option value="">All Result</option>
-    <option value="profit">Profit</option>
-    <option value="loss">Loss</option>
-  </select>
-</div>
+    <div class="journal-card full-width-card">
+      <div class="trade-list-header">
+        <h3>Trade List</h3>
+        <button onclick="exportTradesCSV()" class="export-btn">Export CSV</button>
+      </div>
+
       <div id="tradeHistory">
         <p class="empty-text">No trades added yet.</p>
       </div>
     </div>
 
   </div>
+
+  <div id="tradeModal" class="trade-modal">
+    <div class="trade-modal-box">
+
+      <div class="modal-header">
+        <h3>Add Trade</h3>
+        <button onclick="closeTradeModal()" class="modal-close">×</button>
+      </div>
+
+      <div class="modal-grid">
+
+        <div>
+          <input id="tradeDate" type="date">
+          <input id="tradeTime" type="time">
+          <input id="tradeSymbol" type="text" placeholder="Symbol / Stock">
+
+          <select id="tradeSegment" onchange="toggleOptionFields()">
+            <option value="">Trade Segment</option>
+            <option value="Equity">Equity / Stock</option>
+            <option value="Options">Options</option>
+            <option value="Futures">Futures</option>
+          </select>
+
+          <select id="tradeDirection">
+            <option value="">Trade Direction</option>
+            <option value="Long">Long / Buy</option>
+            <option value="Short">Short / Sell</option>
+          </select>
+
+          <input id="tradeEntry" type="number" placeholder="Entry Price">
+          <input id="tradeExit" type="number" placeholder="Exit Price">
+          <input id="tradeQty" type="number" placeholder="Quantity">
+
+          <div id="optionFields" style="display:none;">
+            <input id="strikePrice" type="number" placeholder="Strike Price">
+            <input id="expiryDate" type="date">
+            <input id="premium" type="number" placeholder="Premium">
+            <input id="lotSize" type="number" placeholder="Lot Size">
+            <input id="lots" type="number" placeholder="Lots">
+          </div>
+
+          <div id="futureFields" style="display:none;">
+            <input id="futureExpiry" type="date">
+            <input id="futureLotSize" type="number" placeholder="Future Lot Size">
+          </div>
+
+          <select id="entryReason">
+            <option value="">Why did I enter?</option>
+            <option value="Level Breakout">Level Breakout</option>
+            <option value="Pullback">Pullback</option>
+            <option value="Reversal">Reversal</option>
+            <option value="FOMO Entry">FOMO Entry</option>
+          </select>
+
+          <select id="tradeSetup">
+            <option value="">Setup Type</option>
+            <option value="Breakout">Breakout</option>
+            <option value="Pullback">Pullback</option>
+            <option value="Reversal">Reversal</option>
+            <option value="Scalping">Scalping</option>
+          </select>
+
+          <select id="tradeMistake">
+            <option value="">Mistake</option>
+            <option value="No Mistake">No Mistake</option>
+            <option value="FOMO Entry">FOMO Entry</option>
+            <option value="Over Trading">Over Trading</option>
+            <option value="No SL">No SL</option>
+            <option value="Early Exit">Early Exit</option>
+          </select>
+        </div>
+
+        <div>
+          <h3>Psychology Check</h3>
+          <p class="mini-title">Rate yourself honestly from 1 to 5:</p>
+
+          <label>Plan Followed</label>
+          <select id="planRating">
+            <option value="0">Select Rating</option>
+            <option value="1">1 - Poor</option>
+            <option value="2">2 - Weak</option>
+            <option value="3">3 - Average</option>
+            <option value="4">4 - Good</option>
+            <option value="5">5 - Excellent</option>
+          </select>
+
+          <label>Stop Loss Discipline</label>
+          <select id="slRating">
+            <option value="0">Select Rating</option>
+            <option value="1">1 - Poor</option>
+            <option value="2">2 - Weak</option>
+            <option value="3">3 - Average</option>
+            <option value="4">4 - Good</option>
+            <option value="5">5 - Excellent</option>
+          </select>
+
+          <label>Emotion Control</label>
+          <select id="emotionRating">
+            <option value="0">Select Rating</option>
+            <option value="1">1 - Poor</option>
+            <option value="2">2 - Weak</option>
+            <option value="3">3 - Average</option>
+            <option value="4">4 - Good</option>
+            <option value="5">5 - Excellent</option>
+          </select>
+
+          <label>Risk Management</label>
+          <select id="riskRating">
+            <option value="0">Select Rating</option>
+            <option value="1">1 - Poor</option>
+            <option value="2">2 - Weak</option>
+            <option value="3">3 - Average</option>
+            <option value="4">4 - Good</option>
+            <option value="5">5 - Excellent</option>
+          </select>
+
+          <label>Entry Quality</label>
+          <select id="entryRating">
+            <option value="0">Select Rating</option>
+            <option value="1">1 - Poor</option>
+            <option value="2">2 - Weak</option>
+            <option value="3">3 - Average</option>
+            <option value="4">4 - Good</option>
+            <option value="5">5 - Excellent</option>
+          </select>
+
+          <label>Trade Quality</label>
+          <select id="tradeQuality">
+            <option value="">Trade Quality</option>
+            <option value="Winning Trade + Good Process">Winning Trade + Good Process</option>
+            <option value="Winning Trade + Bad Process">Winning Trade + Bad Process</option>
+            <option value="Losing Trade + Good Process">Losing Trade + Good Process</option>
+            <option value="Losing Trade + Bad Process">Losing Trade + Bad Process</option>
+          </select>
+
+          <textarea id="psychologyNote" placeholder="What was going on in my mind during this trade?"></textarea>
+
+          <div class="mind-score">
+            Trader Score: <strong id="disciplineScore">0/100</strong><br>
+            Trader Grade: <span id="traderGrade">N/A</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <label class="check-row">
+          <input id="rulesFollowed" type="checkbox">
+          Rules Followed
+        </label>
+
+        <label>Before Entry Screenshot</label>
+        <input id="beforeScreenshot" type="file">
+
+        <label>After Exit Screenshot</label>
+        <input id="afterScreenshot" type="file">
+
+        <button id="saveTradeBtn" onclick="saveTrade()">Save Trade</button>
+      </div>
+
+    </div>
+  </div>
+
 </section>
+
 <section class="about reveal" id="about">
   <p class="section-title">About Me</p>
   <h2>Hi, I'm Deendayal</h2>
@@ -670,6 +637,13 @@ function toggleOptionFields() {
     document.getElementById("futureFields").style.display = "none";
   }
 }
+function openTradeModal() {
+  document.getElementById("tradeModal").style.display = "flex";
+}
+
+function closeTradeModal() {
+  document.getElementById("tradeModal").style.display = "none";
+}
 async function saveTrade() {
  const saveBtn = document.getElementById("saveTradeBtn");
 
@@ -805,6 +779,7 @@ return;
   updateTradeReplay(trade);
   updateBestTradeShowcase();
   updateEquityCurve();
+  updateCalendarHeatmap();
  showProcessWarning(trade);
 resetTradeForm();
 document.getElementById("entryReason").value = "";
@@ -1322,6 +1297,57 @@ function showProcessWarning(trade) {
   else {
     warningBox.innerText = "🚨 Loss bhi hua aur process bhi weak tha. Is trade ko deeply review karo.";
     warningBox.className = "process-warning danger";
+  }
+}
+function updateCalendarHeatmap() {
+  const box = document.getElementById("calendarHeatmap");
+  if (!box) return;
+
+  box.innerHTML = "";
+
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  const dayStats = {};
+
+  trades.forEach((trade) => {
+    if (!trade.date) return;
+
+    const d = new Date(trade.date);
+    if (d.getMonth() !== month || d.getFullYear() !== year) return;
+
+    const day = d.getDate();
+
+    if (!dayStats[day]) {
+      dayStats[day] = {
+        pnl: 0,
+        trades: 0
+      };
+    }
+
+    dayStats[day].pnl += Number(trade.pnl) || 0;
+    dayStats[day].trades++;
+  });
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const data = dayStats[day];
+
+    let cls = "no-trade-day";
+    let info = `${day}: No Trade`;
+
+    if (data) {
+      cls = data.pnl >= 0 ? "profit-day" : "loss-day";
+      info = `${day}: ₹${data.pnl.toFixed(2)} | Trades: ${data.trades}`;
+    }
+
+    box.innerHTML += `
+      <div class="heat-day ${cls}" data-info="${info}">
+        ${day}
+      </div>
+    `;
   }
 }
 function updateEquityCurve() {

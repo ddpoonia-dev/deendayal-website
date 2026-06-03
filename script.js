@@ -77,6 +77,7 @@ async function loadTradesFromFirebase() {
     updateBestTradeShowcase();
     updateTradeReplay(trades[0]);
     updateEquityCurve();
+    updateCalendarHeatmap();
     updateMonthlyDashboard();
 
 console.log("Trades loaded:", trades.length);
@@ -136,6 +137,7 @@ renderTradeHistory();
 updateBestTradeShowcase();
 updateTradeReplay(null);
 updateEquityCurve();
+    updateCalendarHeatmap();
     loginBtn.textContent = "Login";
 
     loginBtn.onclick = () => {

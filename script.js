@@ -64,9 +64,12 @@ async function loadTradesFromFirebase() {
         });
 
         updateDashboard();
-        renderTradeHistory();
+renderTradeHistory();
+updateBestTradeShowcase();
+updateTradeReplay(trades[0]);
+updateEquityCurve();
 
-        console.log("Trades loaded:", trades.length);
+console.log("Trades loaded:", trades.length);
 
     } catch (error) {
         console.error("Load Error:", error);

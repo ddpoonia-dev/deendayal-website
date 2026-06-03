@@ -103,6 +103,7 @@ risk management, and disciplined execution in Indian markets.
         <h3>Add Trade</h3>
 
         <input id="tradeDate" type="date">
+        <input id="tradeTime" type="time">
 
         <input id="tradeSymbol" type="text" placeholder="Symbol / Stock">
         <select id="tradeSegment" onchange="toggleOptionFields()">
@@ -285,37 +286,64 @@ risk management, and disciplined execution in Indian markets.
         <p>Worst Trade: ₹<span id="worstTrade">0</span></p>
         <p>Most Repeated Mistake: <span id="topMistake">None</span></p>
         <p>Top 3 Mistakes:</p>
+<h4>Top 3 Mistakes</h4>
 <ul id="topMistakesList">
-    <h4>Mistake Cost Analysis</h4>
+  <li>None</li>
+</ul>
 
+<h4>Mistake Cost Analysis</h4>
 <ul id="mistakeCostList">
   <li>No Data</li>
 </ul>
-<h4>Best Setup Finder</h4>
 
+<h4>Best Setup Finder</h4>
 <ul id="bestSetupList">
   <li>No Data</li>
 </ul>
-<h4>Worst Setup Warning</h4>
 
+<h4>Worst Setup Warning</h4>
 <div id="worstSetupWarning">
   No warning yet.
 </div>
-  <li>None</li>
+
+<h4>Best Time To Trade</h4>
+<ul id="bestTimeList">
+  <li>No Data</li>
 </ul>
+
+<h4>Worst Time Warning</h4>
+<div id="worstTimeWarning">
+  No warning yet.
+</div>
       </div>
 
       <div class="journal-card">
         <h3>Graph</h3>
 
         <div class="chart-box">
-          <div class="chart-line"></div>
-          <p>Equity Curve Preview</p>
-        </div>
+  <div id="equityCurve"></div>
+</div>
       </div>
 
     </div>
+    <div class="journal-card">
+  <h3>Best Trade Showcase</h3>
 
+  <div id="bestTradeShowcase">
+    <p class="empty-text">
+      Save trades to find your best trade.
+    </p>
+  </div>
+</div>
+<div class="journal-card">
+  <h3>Trade Replay Card</h3>
+
+  <div id="tradeReplay">
+    <p class="empty-text">
+      Save a trade to view replay.
+    </p>
+  </div>
+</div>
     <div class="journal-card">
       <h3>Trade History</h3>
       <div id="tradeHistory">
@@ -456,11 +484,11 @@ risk management, and disciplined execution in Indian markets.
 
     <h2>Login</h2>
 
-    <input type="email" placeholder="Email">
-    <input type="password" placeholder="Password">
+<input id="loginEmail" type="email" placeholder="Email">
+<input id="loginPassword" type="password" placeholder="Password">
 
-    <button>Login</button>
-    <button>Create Account</button>
+<button onclick="loginUser()">Login</button>
+<button onclick="registerUser()">Create Account</button>
   </div>
 </div>
 <footer>
@@ -548,7 +576,7 @@ function toggleOptionFields() {
     document.getElementById("futureFields").style.display = "none";
   }
 }
-function saveTrade() {
+async function saveTrade() {
   const entry = Number(document.getElementById("tradeEntry").value);
   const exit = Number(document.getElementById("tradeExit").value);
   const qty = Number(document.getElementById("tradeQty").value);
@@ -578,6 +606,7 @@ if (direction === "Long") {
 
   const trade = {
     date: document.getElementById("tradeDate").value,
+    time: document.getElementById("tradeTime").value,
     symbol: document.getElementById("tradeSymbol").value,
     segment: document.getElementById("tradeSegment").value,
 optionType: document.getElementById("optionType")?.value || "",
@@ -605,11 +634,36 @@ afterScreenshot: document.getElementById("afterScreenshot").files[0]
     tradeQuality: document.getElementById("tradeQuality").value,
     note: document.getElementById("psychologyNote").value
   };
+try {
 
+  const user = auth.currentUser;
+
+  if (user) {
+
+    await addDoc(
+      collection(db, "users", user.uid, "trades"),
+      {
+        ...trade,
+        createdAt: serverTimestamp()
+      }
+    );
+
+    console.log("Trade saved to Firebase");
+
+  }
+
+} catch (error) {
+
+  console.error("Firestore Error:", error);
+
+}
   trades.push(trade);
 
   updateDashboard();
   renderTradeHistory();
+  updateTradeReplay(trade);
+  updateBestTradeShowcase();
+  updateEquityCurve();
   showProcessWarning(trade);
   resetTradeForm();
   document.getElementById("entryReason").value = "";
@@ -720,7 +774,92 @@ else {
 
   worstSetupWarning.innerHTML =
     "✅ No losing setup detected yet.";
+}
+const bestTimeList = document.getElementById("bestTimeList");
+bestTimeList.innerHTML = "";
 
+const timeStats = {
+  "09:15 - 10:00": { trades: 0, wins: 0, pnl: 0 },
+  "10:00 - 11:00": { trades: 0, wins: 0, pnl: 0 },
+  "11:00 - 12:00": { trades: 0, wins: 0, pnl: 0 },
+  "12:00 - 01:00": { trades: 0, wins: 0, pnl: 0 },
+  "01:00 - 02:00": { trades: 0, wins: 0, pnl: 0 },
+  "02:00 - 03:30": { trades: 0, wins: 0, pnl: 0 }
+};
+
+trades.forEach((trade) => {
+  if (!trade.time) return;
+
+  const time = trade.time;
+
+  let slot = "";
+
+  if (time >= "09:15" && time < "10:00") {
+    slot = "09:15 - 10:00";
+  } else if (time >= "10:00" && time < "11:00") {
+    slot = "10:00 - 11:00";
+  } else if (time >= "11:00" && time < "12:00") {
+    slot = "11:00 - 12:00";
+  } else if (time >= "12:00" && time < "13:00") {
+    slot = "12:00 - 01:00";
+  } else if (time >= "13:00" && time < "14:00") {
+    slot = "01:00 - 02:00";
+  } else if (time >= "14:00" && time <= "15:30") {
+    slot = "02:00 - 03:30";
+  }
+
+  if (!slot) return;
+
+  timeStats[slot].trades++;
+  timeStats[slot].pnl += trade.pnl;
+
+  if (trade.pnl > 0) {
+    timeStats[slot].wins++;
+  }
+});
+
+const sortedTimes = Object.entries(timeStats)
+  .filter((item) => item[1].trades > 0)
+  .sort((a, b) => b[1].pnl - a[1].pnl);
+
+if (sortedTimes.length === 0) {
+  bestTimeList.innerHTML = "<li>No Data</li>";
+} else {
+  sortedTimes.forEach((item) => {
+    const slot = item[0];
+    const data = item[1];
+    const winRate = Math.round((data.wins / data.trades) * 100);
+
+    bestTimeList.innerHTML += `
+      <li>
+        ${slot} — ₹${data.pnl.toFixed(2)}
+        | Win Rate: ${winRate}%
+      </li>
+    `;
+  });
+}
+const worstTimeWarning =
+  document.getElementById("worstTimeWarning");
+
+let worstTime = null;
+let worstTimePnl = 0;
+
+Object.entries(timeStats).forEach((item) => {
+  const slot = item[0];
+  const data = item[1];
+
+  if (data.trades > 0 && data.pnl < worstTimePnl) {
+    worstTimePnl = data.pnl;
+    worstTime = slot;
+  }
+});
+
+if (worstTime) {
+  worstTimeWarning.innerHTML =
+    `⚠️ Warning: ${worstTime} is your weakest time slot (₹${worstTimePnl.toFixed(2)}).`;
+} else {
+  worstTimeWarning.innerHTML =
+    "✅ No weak time slot detected yet.";
 }
   document.getElementById("liveTotalTrades").innerText = totalTrades;
   document.getElementById("liveTotalPnl").innerText = "₹" + totalPnl.toFixed(2);
@@ -841,7 +980,123 @@ function showProcessWarning(trade) {
     warningBox.className = "process-warning danger";
   }
 }
+function updateEquityCurve() {
+  const equityCurve = document.getElementById("equityCurve");
+  equityCurve.innerHTML = "";
 
+  let runningTotal = 0;
+
+  trades.forEach((trade) => {
+    runningTotal += trade.pnl;
+
+    const bar = document.createElement("div");
+    bar.classList.add("equity-bar");
+
+    if (runningTotal < 0) {
+      bar.classList.add("loss-bar");
+    }
+
+    const height = Math.min(Math.abs(runningTotal) / 100, 180);
+    bar.style.height = height + "px";
+
+    equityCurve.appendChild(bar);
+  });
+}
+function updateBestTradeShowcase() {
+
+  const showcase =
+    document.getElementById("bestTradeShowcase");
+
+  if (trades.length === 0) {
+    showcase.innerHTML =
+      "<p class='empty-text'>No trades yet.</p>";
+    return;
+  }
+
+  const bestTrade =
+    trades.reduce((best, current) =>
+      current.pnl > best.pnl ? current : best
+    );
+
+  showcase.innerHTML = `
+    <div class="replay-card">
+
+      <h4>
+        🏆 Best Trade Ever
+      </h4>
+
+      <p>
+        ${bestTrade.symbol || "N/A"}
+        |
+        ${bestTrade.segment || "N/A"}
+      </p>
+
+      <p>
+        Date:
+        ${bestTrade.date || "N/A"}
+      </p>
+
+      <p>
+        Setup:
+        ${bestTrade.setup || "No Setup"}
+      </p>
+
+      <p>
+        P&L:
+        <strong class="profit">
+          ₹${bestTrade.pnl.toFixed(2)}
+        </strong>
+      </p>
+
+      <p>
+        Trader Score:
+        ${bestTrade.disciplineScore * 4}/100
+      </p>
+
+    </div>
+  `;
+}
+function updateTradeReplay(trade) {
+  const replay = document.getElementById("tradeReplay");
+  const tradeClass = classifyTrade(trade);
+  const pnlClass = trade.pnl >= 0 ? "profit" : "loss";
+
+  replay.innerHTML = `
+    <div class="replay-card">
+      <h4>${trade.symbol || "N/A"} | ${trade.segment || "N/A"}</h4>
+
+      <p>Direction: ${trade.direction || "N/A"}</p>
+      <p>Time: ${trade.time || "No Time"}</p>
+      <p>Setup: ${trade.setup || "No Setup"}</p>
+      <p>Entry Reason: ${trade.entryReason || "Not Added"}</p>
+      <p>Mistake: ${trade.mistake || "No Mistake"}</p>
+
+      <p>
+        Result:
+        <strong class="${pnlClass}">
+          ₹${trade.pnl.toFixed(2)}
+        </strong>
+      </p>
+
+      <p>Process: ${tradeClass}</p>
+      <p>Trader Score: ${trade.disciplineScore * 4}/100</p>
+
+      <div class="replay-images">
+        ${
+          trade.beforeScreenshot
+            ? `<img src="${trade.beforeScreenshot}" class="trade-thumb">`
+            : ""
+        }
+
+        ${
+          trade.afterScreenshot
+            ? `<img src="${trade.afterScreenshot}" class="trade-thumb">`
+            : ""
+        }
+      </div>
+    </div>
+  `;
+}
 function renderTradeHistory() {
   const history = document.getElementById("tradeHistory");
   history.innerHTML = "";
@@ -862,6 +1117,8 @@ function renderTradeHistory() {
 
       ${trade.segment || "N/A"} |
       ${trade.direction || "N/A"}
+      <br>
+    🕒 ${trade.time || "No Time"}
 
       <br>
 
@@ -940,6 +1197,6 @@ document.getElementById("tradeQuality").value = "";
   window.addEventListener('scroll', revealSections);
   revealSections();
 </script>
-
+<script type="module" src="script.js"></script>
 </body>
 </html>

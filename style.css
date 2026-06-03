@@ -674,16 +674,6 @@ nav a:hover {
   padding-bottom: 20px;
 }
 
-.chart-line {
-  position: absolute;
-  width: 80%;
-  height: 80px;
-  border-top: 3px solid #00c896;
-  transform: rotate(-8deg);
-  top: 90px;
-  opacity: 0.7;
-}
-
 .trade-row {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
@@ -745,4 +735,53 @@ nav a:hover {
 .process-warning.danger {
   border-color: #ff4d4d;
   color: #ff4d4d;
+}#equityCurve {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: end;
+  gap: 6px;
+  padding: 20px;
+}
+
+.equity-bar {
+  flex: 1;
+  min-width: 10px;
+  border-radius: 6px 6px 0 0;
+  background: #00c896;
+}
+
+.equity-bar.loss-bar {
+  background: #ff4d4d;
+}
+.replay-card {
+  background: #0d0d0d;
+  border: 1px solid #222;
+  border-radius: 10px;
+  padding: 18px;
+}
+
+.replay-card h4 {
+  color: #00c896;
+  margin-bottom: 12px;
+}
+
+.replay-card p {
+  color: #ccc;
+  margin-bottom: 8px;
+}
+
+.replay-images {
+  display: flex;
+  gap: 10px;
+  margin-top: 15px;
+  flex-wrap: wrap;
+}
+
+.replay-images img {
+  width: 120px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid #222;
 }

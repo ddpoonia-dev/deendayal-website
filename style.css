@@ -1913,3 +1913,88 @@ select:focus {
     grid-template-columns: repeat(7, 1fr);
   }
 }
+/* Modal Center Fix */
+
+.trade-modal {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  display: none;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 24px !important;
+  overflow: hidden !important;
+  z-index: 999999 !important;
+}
+
+.trade-modal-box {
+  margin: 0 !important;
+  max-height: 88vh !important;
+  overflow-y: auto !important;
+  transform: none !important;
+}
+.rr-box{
+  margin-bottom:12px;
+  padding:12px;
+  background:#0d0d0d;
+  border:1px solid #222;
+  border-radius:8px;
+  color:#fff;
+}
+
+.rr-box strong{
+  color:#00c896;
+  font-size:18px;
+}
+.rule-cost-card {
+  padding: 16px;
+  margin: 18px 0;
+  border-radius: 18px;
+  background:
+    linear-gradient(135deg, rgba(255, 77, 77, 0.10), rgba(0, 200, 150, 0.08)),
+    #060606;
+  border: 1px solid rgba(0, 200, 150, 0.25);
+}
+
+.rule-cost-card h4 {
+  color: #00c896;
+  margin-bottom: 14px;
+}
+
+.rule-cost-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.rule-cost-grid div {
+  padding: 14px;
+  border-radius: 14px;
+  background: #050505;
+  border: 1px solid #222;
+}
+
+.rule-cost-grid span {
+  display: block;
+  color: #aaa;
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+
+.rule-cost-grid strong {
+  font-size: 18px;
+}
+
+#ruleBreakMessage {
+  margin-top: 14px;
+  color: #ddd;
+  line-height: 1.5;
+  font-size: 14px;
+}
+
+@media (max-width: 768px) {
+  .rule-cost-grid {
+    grid-template-columns: 1fr;
+  }
+}

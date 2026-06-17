@@ -200,6 +200,43 @@ risk management, and disciplined execution in Indian markets.
       </div>
     </div>
 
+    <div class="journal-card">
+      <h3>Daily P&L Chart</h3>
+      <div class="chart-box">
+        <svg id="dailyPnlChart" viewBox="0 0 500 220"></svg>
+      </div>
+    </div>
+
+    <div class="journal-card full-width-card">
+      <h3>Weekly & Monthly Summary</h3>
+      <div class="summary-grid">
+        <div>
+          <span>This Week P&L</span>
+          <strong id="weekPnl">₹0</strong>
+        </div>
+        <div>
+          <span>Weekly Win Rate</span>
+          <strong id="weekWinRate">0%</strong>
+        </div>
+        <div>
+          <span>Weekly Max Drawdown</span>
+          <strong id="weekMaxDrawdown">₹0</strong>
+        </div>
+        <div>
+          <span>This Month P&L</span>
+          <strong id="monthPnlSummary">₹0</strong>
+        </div>
+        <div>
+          <span>Monthly Win Rate</span>
+          <strong id="monthWinRateSummary">0%</strong>
+        </div>
+        <div>
+          <span>Monthly Max Drawdown</span>
+          <strong id="monthMaxDrawdown">₹0</strong>
+        </div>
+      </div>
+    </div>
+
     <div class="journal-card duplicate-section">
       <h3>Best Trade Showcase</h3>
       <div id="bestTradeShowcase">
@@ -365,13 +402,16 @@ risk management, and disciplined execution in Indian markets.
             <option value="Scalping">Scalping</option>
           </select>
 
-          <select id="tradeMistake">
-            <option value="">Mistake</option>
+          <label for="tradeMistake" class="field-label">Mistakes</label>
+          <select id="tradeMistake" multiple size="5">
             <option value="No Mistake">No Mistake</option>
             <option value="FOMO Entry">FOMO Entry</option>
             <option value="Over Trading">Over Trading</option>
             <option value="No SL">No SL</option>
             <option value="Early Exit">Early Exit</option>
+            <option value="Revenge Trade">Revenge Trade</option>
+            <option value="Late Entry">Late Entry</option>
+            <option value="Ignored Trend">Ignored Trend</option>
           </select>
         </div>
 
@@ -438,7 +478,7 @@ risk management, and disciplined execution in Indian markets.
             <option value="Losing Trade + Bad Process">Losing Trade + Bad Process</option>
           </select>
 
-          <textarea id="psychologyNote" placeholder="What was going on in my mind during this trade?"></textarea>
+          <textarea id="psychologyNote" placeholder="Short note: mindset, execution, learning, or mistake reason"></textarea>
 
           <div class="mind-score">
             Trader Score: <strong id="disciplineScore">0/100</strong><br>
@@ -613,7 +653,8 @@ risk management, and disciplined execution in Indian markets.
   </small>
 </footer>
 
-<script type="module" src="script.js"></script>
+<script type="module" src="script.js?v=20260617-1134"></script>
 </body>
 </html>
+
 

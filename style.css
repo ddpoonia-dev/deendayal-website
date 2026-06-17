@@ -1625,6 +1625,7 @@ select:focus {
 #tradeHistory {
   max-height: 520px;
   overflow-y: auto;
+  overflow-x: auto;
 }
 
 @media (max-width: 1100px) {
@@ -2183,4 +2184,132 @@ select:focus {
 .legacy-analytics-list,
 .legacy-analytics-warning {
   display: none !important;
+}
+
+.demo-trade {
+  border-style: dashed !important;
+  border-color: rgba(0, 245, 255, 0.55) !important;
+  opacity: 0.9;
+}
+
+.demo-badge {
+  display: inline-block;
+  margin-bottom: 8px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: rgba(0, 245, 255, 0.12);
+  color: #00f5ff;
+  border: 1px solid rgba(0, 245, 255, 0.35);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.summary-grid div {
+  padding: 14px;
+  border-radius: 14px;
+  background: #050505;
+  border: 1px solid rgba(0, 200, 150, 0.22);
+}
+
+.summary-grid span {
+  display: block;
+  color: #9ca3af;
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+
+.summary-grid strong {
+  color: #00ffb3;
+  font-size: 18px;
+}
+
+.trade-table-header,
+.trade-table-row {
+  display: grid;
+  grid-template-columns: 1.35fr 0.9fr 0.9fr 0.8fr 0.75fr 0.75fr 0.75fr 0.85fr 0.65fr 1.1fr 0.6fr 1fr;
+  gap: 10px;
+  align-items: center;
+  min-width: 1180px;
+}
+
+.trade-table-header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 10px 12px;
+  color: #8b949e;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  background: #050505;
+  border: 1px solid rgba(0, 200, 150, 0.18);
+  border-radius: 12px;
+}
+
+.trade-table-row {
+  margin-top: 10px;
+  padding: 12px;
+  border-radius: 14px;
+  background:
+    linear-gradient(135deg, rgba(0, 200, 150, 0.08), rgba(0, 0, 0, 0.92)),
+    #070707;
+  border: 1px solid rgba(0, 200, 150, 0.25);
+  color: #d7dee5;
+  font-size: 12px;
+}
+
+.trade-table-row strong {
+  display: block;
+  color: #fff;
+  font-size: 13px;
+}
+
+.trade-table-row small {
+  display: block;
+  margin-top: 4px;
+  color: #8b949e;
+}
+
+.table-action {
+  width: auto !important;
+  min-width: 58px;
+  padding: 7px 9px !important;
+  margin: 0 !important;
+  border: none !important;
+  border-radius: 8px !important;
+  color: #fff !important;
+  font-size: 11px !important;
+  font-weight: 800;
+}
+
+.edit-action {
+  background: #008cff !important;
+}
+
+.delete-action {
+  background: #ff4444 !important;
+}
+
+.daily-bar.profit-bar {
+  fill: #00c896;
+}
+
+.daily-bar.loss-bar {
+  fill: #ff4d6d;
+}
+
+#tradeMistake {
+  min-height: 118px;
+}
+
+@media (max-width: 900px) {
+  .summary-grid {
+    grid-template-columns: 1fr;
+  }
 }

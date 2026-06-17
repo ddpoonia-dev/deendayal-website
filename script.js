@@ -1,4 +1,4 @@
-// Firebase Imports
+﻿// Firebase Imports
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
 import {
   getAuth,
@@ -79,6 +79,8 @@ async function loadTradesFromFirebase() {
     updateTradeReplay(trades[0]);
     updateEquityCurve();
     updateCalendarHeatmap();
+    updateDailyPnlChart();
+    updatePeriodSummary();
     updateMonthlyDashboard();
 
 console.log("Trades loaded:", trades.length);
@@ -134,6 +136,8 @@ onAuthStateChanged(auth, async (user) => {
       updateTradeReplay(null);
       updateEquityCurve();
       updateCalendarHeatmap();
+      updateDailyPnlChart();
+      updatePeriodSummary();
 
       loginBtn.textContent = "Login";
       loginBtn.onclick = () => openLoginPopup();
@@ -152,6 +156,8 @@ onAuthStateChanged(auth, async (user) => {
     updateTradeReplay(null);
     updateEquityCurve();
     updateCalendarHeatmap();
+    updateDailyPnlChart();
+    updatePeriodSummary();
 
     loginBtn.textContent = "Login";
     loginBtn.onclick = () => openLoginPopup();
@@ -191,23 +197,23 @@ else {
 const gradeElement = document.getElementById("traderGrade");
 
 if (traderScore >= 95) {
-  gradeElement.innerText = "🏆 Elite Trader";
+  gradeElement.innerText = "ðŸ† Elite Trader";
 }
 
 else if (traderScore >= 85) {
-  gradeElement.innerText = "🔥 Professional Trader";
+  gradeElement.innerText = "ðŸ”¥ Professional Trader";
 }
 
 else if (traderScore >= 70) {
-  gradeElement.innerText = "📈 Consistent Trader";
+  gradeElement.innerText = "ðŸ“ˆ Consistent Trader";
 }
 
 else if (traderScore >= 50) {
-  gradeElement.innerText = "⚠️ Developing Trader";
+  gradeElement.innerText = "âš ï¸ Developing Trader";
 }
 
 else {
-  gradeElement.innerText = "🚨 Undisciplined Trader";
+  gradeElement.innerText = "ðŸš¨ Undisciplined Trader";
 }
 
   return score;
@@ -356,7 +362,12 @@ futureLotSize: "",
     direction: direction,
     entryReason: document.getElementById("entryReason").value,
     setup: document.getElementById("tradeSetup").value,
-    mistake: document.getElementById("tradeMistake").value || "No Mistake",
+    mistakes: getSelectedValues("tradeMistake").length
+      ? getSelectedValues("tradeMistake")
+      : ["No Mistake"],
+    mistake: getSelectedValues("tradeMistake").length
+      ? getSelectedValues("tradeMistake").join(", ")
+      : "No Mistake",
     beforeScreenshot: document.getElementById("beforeScreenshot").files[0]
   ? URL.createObjectURL(document.getElementById("beforeScreenshot").files[0])
   : "",
@@ -446,6 +457,8 @@ return;
   updateBestTradeShowcase();
   updateEquityCurve();
   updateCalendarHeatmap();
+  updateDailyPnlChart();
+  updatePeriodSummary();
  showProcessWarning(trade);
 resetTradeForm();
 document.getElementById("entryReason").value = "";
@@ -458,6 +471,102 @@ saveBtn.innerText = "Save Trade";
 function safeText(id, value) {
   const el = document.getElementById(id);
   if (el) el.innerText = value;
+}
+
+function money(value) {
+  return "₹" + Number(value || 0).toFixed(2);
+}
+
+function getSelectedValues(id) {
+  const el = document.getElementById(id);
+  if (!el) return [];
+
+  return Array.from(el.selectedOptions)
+    .map((option) => option.value)
+    .filter(Boolean);
+}
+
+function setSelectedValues(id, values) {
+  const el = document.getElementById(id);
+  if (!el) return;
+
+  const selectedValues = Array.isArray(values)
+    ? values
+    : String(values || "").split(",").map((value) => value.trim()).filter(Boolean);
+
+  Array.from(el.options).forEach((option) => {
+    option.selected = selectedValues.includes(option.value);
+  });
+}
+
+function getTradeMistakes(trade) {
+  if (Array.isArray(trade.mistakes)) return trade.mistakes;
+  if (Array.isArray(trade.mistake)) return trade.mistake;
+  if (trade.mistake) return String(trade.mistake).split(",").map((item) => item.trim()).filter(Boolean);
+  return ["No Mistake"];
+}
+
+function getMistakeText(trade) {
+  const mistakes = getTradeMistakes(trade);
+  return mistakes.length ? mistakes.join(", ") : "No Mistake";
+}
+
+function calculateMaxDrawdown(tradeList) {
+  let running = 0;
+  let peak = 0;
+  let maxDrawdown = 0;
+
+  tradeList.forEach((trade) => {
+    running += Number(trade.pnl) || 0;
+    peak = Math.max(peak, running);
+    maxDrawdown = Math.min(maxDrawdown, running - peak);
+  });
+
+  return Math.abs(maxDrawdown);
+}
+
+function getWeekStart(date) {
+  const d = new Date(date);
+  const day = d.getDay() || 7;
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() - day + 1);
+  return d;
+}
+
+function updatePeriodSummary() {
+  const now = new Date();
+  const weekStart = getWeekStart(now);
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
+
+  const weekTrades = trades.filter((trade) => {
+    if (!trade.date) return false;
+    const tradeDate = new Date(trade.date);
+    return tradeDate >= weekStart && tradeDate <= now;
+  });
+
+  const monthTrades = trades.filter((trade) => {
+    if (!trade.date) return false;
+    const tradeDate = new Date(trade.date);
+    return tradeDate.getMonth() === currentMonth && tradeDate.getFullYear() === currentYear;
+  });
+
+  const makeStats = (tradeList) => {
+    const pnl = tradeList.reduce((sum, trade) => sum + (Number(trade.pnl) || 0), 0);
+    const wins = tradeList.filter((trade) => Number(trade.pnl) > 0).length;
+    const winRate = tradeList.length ? Math.round((wins / tradeList.length) * 100) : 0;
+    return { pnl, winRate, maxDrawdown: calculateMaxDrawdown(tradeList) };
+  };
+
+  const week = makeStats(weekTrades);
+  const month = makeStats(monthTrades);
+
+  safeText("weekPnl", money(week.pnl));
+  safeText("weekWinRate", week.winRate + "%");
+  safeText("weekMaxDrawdown", money(week.maxDrawdown));
+  safeText("monthPnlSummary", money(month.pnl));
+  safeText("monthWinRateSummary", month.winRate + "%");
+  safeText("monthMaxDrawdown", money(month.maxDrawdown));
 }
 
 function updateMonthlyDashboard() {
@@ -593,16 +702,16 @@ function updatePsychologyVerdict() {
   let suggestion = "";
 
   if (psychologyScore >= 85) {
-    verdict = "🔥 Strong Trading Psychology";
+    verdict = "ðŸ”¥ Strong Trading Psychology";
     suggestion = "Discipline strong hai. Ab size badhane se pehle consistency maintain karo.";
   } else if (psychologyScore >= 70) {
-    verdict = "📈 Good, But Needs Control";
+    verdict = "ðŸ“ˆ Good, But Needs Control";
     suggestion = "Trading okay hai, lekin emotion aur execution ko aur tight karo.";
   } else if (psychologyScore >= 50) {
-    verdict = "⚠️ Weak Psychology Zone";
+    verdict = "âš ï¸ Weak Psychology Zone";
     suggestion = "Abhi size small rakho. Rules aur emotions pe kaam karo.";
   } else {
-    verdict = "🚨 Dangerous Trading Behaviour";
+    verdict = "ðŸš¨ Dangerous Trading Behaviour";
     suggestion = "Overtrading / emotion risk high hai. Capital protect karo, size reduce karo.";
   }
 
@@ -706,7 +815,7 @@ if (sortedSetups.length === 0) {
 
     bestSetupList.innerHTML += `
       <li>
-        ${setupName} — ₹${data.pnl.toFixed(2)} |
+        ${setupName} - ₹${data.pnl.toFixed(2)} |
         Win Rate: ${winRate}%
       </li>
     `;
@@ -733,7 +842,7 @@ Object.entries(setupStats).forEach((item) => {
 if (worstSetup) {
 
   worstSetupWarning.innerHTML =
-    `⚠️ Warning: ${worstSetup}
+    `âš ï¸ Warning: ${worstSetup}
      is currently your worst setup
      (₹${lowestPnl.toFixed(2)})`;
 
@@ -742,7 +851,7 @@ if (worstSetup) {
 else {
 
   worstSetupWarning.innerHTML =
-    "✅ No losing setup detected yet.";
+    "âœ… No losing setup detected yet.";
 }
 const bestTimeList = document.getElementById("bestTimeList");
 if (!bestTimeList) return;
@@ -802,7 +911,7 @@ if (sortedTimes.length === 0) {
 
     bestTimeList.innerHTML += `
       <li>
-        ${slot} — ₹${data.pnl.toFixed(2)}
+        ${slot} - ₹${data.pnl.toFixed(2)}
         | Win Rate: ${winRate}%
       </li>
     `;
@@ -826,10 +935,10 @@ Object.entries(timeStats).forEach((item) => {
 
 if (worstTime) {
   worstTimeWarning.innerHTML =
-    `⚠️ Warning: ${worstTime} is your weakest time slot (₹${worstTimePnl.toFixed(2)}).`;
+    `âš ï¸ Warning: ${worstTime} is your weakest time slot (₹${worstTimePnl.toFixed(2)}).`;
 } else {
   worstTimeWarning.innerHTML =
-    "✅ No weak time slot detected yet.";
+    "âœ… No weak time slot detected yet.";
 }
   document.getElementById("totalTrades").innerText = totalTrades;
   document.getElementById("totalPnl").innerText = "₹" + totalPnl.toFixed(2);
@@ -930,22 +1039,22 @@ function showProcessWarning(trade) {
   const tradeClass = classifyTrade(trade);
 
   if (tradeClass === "Winning Trade + Bad Process") {
-    warningBox.innerText = "⚠️ Profit hua, lekin process weak tha. Aise trades repeat mat karo.";
+    warningBox.innerText = "âš ï¸ Profit hua, lekin process weak tha. Aise trades repeat mat karo.";
     warningBox.className = "process-warning warning";
   }
 
   else if (tradeClass === "Losing Trade + Good Process") {
-    warningBox.innerText = "✅ Loss hua, lekin process strong tha. Ye acceptable trading hai.";
+    warningBox.innerText = "âœ… Loss hua, lekin process strong tha. Ye acceptable trading hai.";
     warningBox.className = "process-warning good";
   }
 
   else if (tradeClass === "Winning Trade + Good Process") {
-    warningBox.innerText = "🔥 Excellent trade. Profit bhi aur process bhi strong.";
+    warningBox.innerText = "ðŸ”¥ Excellent trade. Profit bhi aur process bhi strong.";
     warningBox.className = "process-warning good";
   }
 
   else {
-    warningBox.innerText = "🚨 Loss bhi hua aur process bhi weak tha. Is trade ko deeply review karo.";
+    warningBox.innerText = "ðŸš¨ Loss bhi hua aur process bhi weak tha. Is trade ko deeply review karo.";
     warningBox.className = "process-warning danger";
   }
 }
@@ -1063,6 +1172,55 @@ function updateEquityCurve() {
     `;
   });
 }
+
+function updateDailyPnlChart() {
+  const chart = document.getElementById("dailyPnlChart");
+  if (!chart) return;
+
+  chart.innerHTML = "";
+
+  if (!trades.length) {
+    chart.innerHTML = `<text x="250" y="110" text-anchor="middle" fill="#777">Daily P&L will appear here</text>`;
+    return;
+  }
+
+  const dayStats = {};
+
+  trades.forEach((trade) => {
+    if (!trade.date) return;
+    dayStats[trade.date] = (dayStats[trade.date] || 0) + (Number(trade.pnl) || 0);
+  });
+
+  const entries = Object.entries(dayStats).sort((a, b) => new Date(a[0]) - new Date(b[0])).slice(-14);
+  const values = entries.map((entry) => entry[1]);
+
+  const width = 500;
+  const height = 220;
+  const padding = 28;
+  const maxAbs = Math.max(...values.map((value) => Math.abs(value)), 1);
+  const zeroY = height / 2;
+  const barGap = 8;
+  const barWidth = (width - padding * 2 - barGap * (entries.length - 1)) / entries.length;
+
+  chart.innerHTML += `
+    <line x1="${padding}" y1="${zeroY}" x2="${width - padding}" y2="${zeroY}" class="equity-zero-line" />
+  `;
+
+  entries.forEach(([date, pnl], index) => {
+    const barHeight = Math.max(4, (Math.abs(pnl) / maxAbs) * (height / 2 - padding));
+    const x = padding + index * (barWidth + barGap);
+    const y = pnl >= 0 ? zeroY - barHeight : zeroY;
+    const cls = pnl >= 0 ? "daily-bar profit-bar" : "daily-bar loss-bar";
+    const day = new Date(date).getDate();
+
+    chart.innerHTML += `
+      <rect x="${x}" y="${y}" width="${barWidth}" height="${barHeight}" rx="4" class="${cls}">
+        <title>${date}: ${money(pnl)}</title>
+      </rect>
+      <text x="${x + barWidth / 2}" y="${height - 8}" text-anchor="middle" fill="#777" font-size="10">${day}</text>
+    `;
+  });
+}
 function updateBestTradeShowcase() {
 
   const showcase =
@@ -1083,7 +1241,7 @@ function updateBestTradeShowcase() {
     <div class="replay-card">
 
       <h4>
-        🏆 Best Trade Ever
+        ðŸ† Best Trade Ever
       </h4>
 
       <p>
@@ -1117,11 +1275,68 @@ function updateBestTradeShowcase() {
     </div>
   `;
 }
+function getDemoTradePreview() {
+  return {
+    symbol: "NIFTY 24500 CE",
+    segment: "Options",
+    direction: "Long",
+    time: "09:45",
+    setup: "Breakout",
+    entryReason: "Level Breakout",
+    mistake: "No Mistake",
+    entry: 120,
+    exit: 136,
+    qty: 75,
+    pnl: 1200,
+    rules: true,
+    disciplineScore: 22,
+    tradeQuality: "Winning Trade + Good Process"
+  };
+}
+
+function renderDemoTradeRow() {
+  const demo = getDemoTradePreview();
+
+  return `
+    <div class="trade-table-row demo-trade">
+      <div><span class="demo-badge">Demo</span><strong>${demo.symbol}</strong><small>${demo.time}</small></div>
+      <div>${new Date().toISOString().slice(0, 10)}</div>
+      <div>${demo.setup}</div>
+      <div>${demo.direction}</div>
+      <div>₹${demo.entry}</div>
+      <div>₹112</div>
+      <div>₹136</div>
+      <div class="profit">₹${demo.pnl.toFixed(2)}</div>
+      <div>1 : 2.00</div>
+      <div>No Mistake</div>
+      <div>Yes</div>
+      <div><small>Your real trades will appear here.</small></div>
+    </div>
+  `;
+}
+
+function renderDemoReplayCard() {
+  const demo = getDemoTradePreview();
+
+  return `
+    <div class="replay-card demo-trade">
+      <span class="demo-badge">Demo Preview</span>
+      <h4>${demo.symbol} | ${demo.segment}</h4>
+      <p>Direction: ${demo.direction}</p>
+      <p>Entry: ₹${demo.entry} | Exit: ₹${demo.exit} | Qty: ${demo.qty}</p>
+      <p>Setup: ${demo.setup}</p>
+      <p>Entry Reason: ${demo.entryReason}</p>
+      <p>Result: <strong class="profit">₹${demo.pnl.toFixed(2)}</strong></p>
+      <p>Process: Winning Trade + Good Process</p>
+    </div>
+  `;
+}
+
 function updateTradeReplay(trade) {
   const replay = document.getElementById("tradeReplay");
 
   if (!trade) {
-    replay.innerHTML = "<p class='empty-text'>Save a trade to view replay.</p>";
+    replay.innerHTML = renderDemoReplayCard();
     return;
   }
   const tradeClass = classifyTrade(trade);
@@ -1163,114 +1378,85 @@ function updateTradeReplay(trade) {
     </div>
   `;
 }
+function renderTradeTableHeader() {
+  return `
+    <div class="trade-table-header">
+      <span>Trade</span>
+      <span>Date</span>
+      <span>Setup</span>
+      <span>Direction</span>
+      <span>Entry</span>
+      <span>SL</span>
+      <span>Target</span>
+      <span>P&L</span>
+      <span>R:R</span>
+      <span>Mistake</span>
+      <span>Rules</span>
+      <span>Actions</span>
+    </div>
+  `;
+}
+
 function renderTradeHistory() {
   const history = document.getElementById("tradeHistory");
-  history.innerHTML = "";
-const searchText = document.getElementById("tradeSearch").value.toLowerCase();
-const directionValue = document.getElementById("directionFilter").value;
-const resultValue = document.getElementById("resultFilter").value;
+  history.innerHTML = renderTradeTableHeader();
 
-const filteredTrades = trades.filter((trade) => {
-  const symbolMatch = (trade.symbol || "").toLowerCase().includes(searchText);
-  const setupMatch = (trade.setup || "").toLowerCase().includes(searchText);
+  const searchText = document.getElementById("tradeSearch").value.toLowerCase();
+  const directionValue = document.getElementById("directionFilter").value;
+  const resultValue = document.getElementById("resultFilter").value;
 
-  const directionMatch =
-    !directionValue || trade.direction === directionValue;
+  const filteredTrades = trades.filter((trade) => {
+    const symbolMatch = (trade.symbol || "").toLowerCase().includes(searchText);
+    const setupMatch = (trade.setup || "").toLowerCase().includes(searchText);
+    const directionMatch = !directionValue || trade.direction === directionValue;
+    const resultMatch =
+      !resultValue ||
+      (resultValue === "profit" && trade.pnl >= 0) ||
+      (resultValue === "loss" && trade.pnl < 0);
 
-  const resultMatch =
-    !resultValue ||
-    (resultValue === "profit" && trade.pnl >= 0) ||
-    (resultValue === "loss" && trade.pnl < 0);
+    return (symbolMatch || setupMatch) && directionMatch && resultMatch;
+  });
 
-  return (symbolMatch || setupMatch) && directionMatch && resultMatch;
-});
-filteredTrades.slice(0, 10).forEach((trade) => {
+  if (trades.length === 0) {
+    history.innerHTML += renderDemoTradeRow();
+    return;
+  }
+
+  if (filteredTrades.length === 0) {
+    history.innerHTML += "<p class='empty-text'>No trades match your filters.</p>";
+    return;
+  }
+
+  filteredTrades.slice(0, 20).forEach((trade) => {
     const pnlClass = trade.pnl >= 0 ? "profit" : "loss";
-    const tradeClass = classifyTrade(trade);
 
-   history.innerHTML += `
-  <div class="trade-row">
-
-    <div>
-      <strong>
-        ${trade.symbol || "N/A"}
-      </strong>
-
-      <br>
-
-      ${trade.segment || "N/A"} |
-      ${trade.direction || "N/A"}
-      <br>
-    🕒 ${trade.time || "No Time"}
-
-      <br>
-
-      Setup:
-      ${trade.setup || "No Setup"}
-      <br>
-Process:
-${tradeClass}  
-    </div>
-
-    <div>
-    <strong class="${pnlClass}">
-        ₹${trade.pnl.toFixed(2)}
-    </strong>
-
-    <br><br>
-<button
-    onclick="editTrade('${trade.id}')"
-    style="
-        background:#008cff;
-        color:white;
-        border:none;
-        padding:4px 8px;
-        border-radius:4px;
-        cursor:pointer;
-        margin-bottom:5px;
-    ">
-    ✏️ Edit
-</button>
-
-<br>
-    <button
-        onclick="deleteTrade('${trade.id}')"
-        style="
-            background:#ff4444;
-            color:white;
-            border:none;
-            padding:4px 8px;
-            border-radius:4px;
-            cursor:pointer;
-        ">
-        🗑 Delete
-    </button>
-</div>
-
-    <div>
-
-      ${
-        trade.beforeScreenshot
-        ? `<img src="${trade.beforeScreenshot}" class="trade-thumb">`
-        : ""
-      }
-
-      ${
-        trade.afterScreenshot
-        ? `<img src="${trade.afterScreenshot}" class="trade-thumb">`
-        : ""
-      }
-
-    </div>
-
-  </div>
-`;
+    history.innerHTML += `
+      <div class="trade-table-row">
+        <div>
+          <strong>${trade.symbol || "N/A"}</strong>
+          <small>${trade.segment || "N/A"} | ${trade.time || "No Time"}</small>
+        </div>
+        <div>${trade.date || "N/A"}</div>
+        <div>${trade.setup || "No Setup"}</div>
+        <div>${trade.direction || "N/A"}</div>
+        <div>${money(trade.entry)}</div>
+        <div>${money(trade.slPrice)}</div>
+        <div>${money(trade.targetPrice)}</div>
+        <div class="${pnlClass}">${money(trade.pnl)}</div>
+        <div>${trade.rrRatio || "0 : 0"}</div>
+        <div>${getMistakeText(trade)}</div>
+        <div>${trade.rules ? "Yes" : "No"}</div>
+        <div class="trade-actions">
+          <button type="button" onclick="editTrade('${trade.id}')" class="table-action edit-action">Edit</button>
+          <button type="button" onclick="deleteTrade('${trade.id}')" class="table-action delete-action">Delete</button>
+        </div>
+      </div>
+    `;
   });
 }
+
 document.getElementById("tradeSearch").addEventListener("input", renderTradeHistory);
-
 document.getElementById("directionFilter").addEventListener("change", renderTradeHistory);
-
 document.getElementById("resultFilter").addEventListener("change", renderTradeHistory);
 function exportTradesCSV() {
 
@@ -1279,7 +1465,7 @@ function exportTradesCSV() {
     return;
   }
 
-  let csv = "Date,Time,Symbol,Segment,Direction,Entry,Exit,Quantity,Setup,Entry Reason,Mistake,Rules Followed,Trader Score,Trade Quality,PNL,Note\n";
+  let csv = "Date,Time,Symbol,Segment,Direction,Entry,SL,Target,Exit,Quantity,RR,Setup,Entry Reason,Mistakes,Rules Followed,Trader Score,Trade Quality,PNL,Note\n";
 
   trades.forEach((trade) => {
 csv +=
@@ -1289,11 +1475,14 @@ csv +=
   `${trade.segment || ""},` +
   `${trade.direction || ""},` +
   `${trade.entry || ""},` +
+  `${trade.slPrice || ""},` +
+  `${trade.targetPrice || ""},` +
   `${trade.exit || ""},` +
   `${trade.qty || ""},` +
+  `${trade.rrRatio || ""},` +
   `${trade.setup || ""},` +
   `${trade.entryReason || ""},` +
-  `${trade.mistake || ""},` +
+  `${getMistakeText(trade)},` +
   `${trade.rules ? "Yes" : "No"},` +
   `${(trade.disciplineScore || 0) * 4},` +
   `${trade.tradeQuality || ""},` +
@@ -1357,7 +1546,7 @@ function editTrade(tradeId) {
     document.getElementById("tradeQty").value = trade.qty || "";
     document.getElementById("entryReason").value = trade.entryReason || "";
     document.getElementById("tradeSetup").value = trade.setup || "";
-    document.getElementById("tradeMistake").value = trade.mistake || "";
+    setSelectedValues("tradeMistake", trade.mistakes || trade.mistake || "");
     document.getElementById("rulesFollowed").checked = trade.rules || false;
     document.getElementById("planRating").value = trade.plan || "0";
     document.getElementById("slRating").value = trade.sl || "0";
@@ -1385,7 +1574,7 @@ function resetTradeForm() {
   document.getElementById("tradeExit").value = "";
   document.getElementById("tradeQty").value = "";
   document.getElementById("tradeSetup").value = "";
-  document.getElementById("tradeMistake").value = "";
+  setSelectedValues("tradeMistake", []);
   document.getElementById("rulesFollowed").checked = false;
 document.getElementById("planRating").value = "0";
 document.getElementById("slRating").value = "0";
@@ -1570,7 +1759,7 @@ function updateMonthlyReportCard() {
   const winRate = totalTrades ? ((winners.length / totalTrades) * 100).toFixed(0) : 0;
   const avgWinner = winners.length ? totalProfit / winners.length : 0;
   const avgLoser = losers.length ? totalLoss / losers.length : 0;
-  const profitFactor = totalLoss ? (totalProfit / totalLoss).toFixed(2) : totalProfit > 0 ? "∞" : "0";
+  const profitFactor = totalLoss ? (totalProfit / totalLoss).toFixed(2) : totalProfit > 0 ? "âˆž" : "0";
 
   document.getElementById("monthTotalTrades").innerText = totalTrades;
   document.getElementById("monthWinRate").innerText = winRate + "%";
@@ -1683,3 +1872,6 @@ function updateAIPatternDetector() {
 
   document.getElementById("aiPatternBox").innerHTML = message;
 }
+
+
+

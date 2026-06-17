@@ -74,6 +74,7 @@ async function loadTradesFromFirebase() {
 
             updateDashboard();
     renderTradeHistory();
+    updateAdvancedAnalytics();
     updateBestTradeShowcase();
     updateTradeReplay(trades[0]);
     updateEquityCurve();
@@ -268,8 +269,36 @@ function toggleOptionFields() {
     document.getElementById("futureFields").style.display = "none";
   }
 }
-function openTradeModal() {
-  document.getElementById("tradeModal").style.display = "flex";
+function setDefaultTradeDateTime() {
+  const dateInput = document.getElementById("tradeDate");
+  const timeInput = document.getElementById("tradeTime");
+  const now = new Date();
+
+  if (dateInput && !dateInput.value) {
+    dateInput.value = now.toISOString().slice(0, 10);
+  }
+
+  if (timeInput && !timeInput.value) {
+    timeInput.value = now.toTimeString().slice(0, 5);
+  }
+}
+
+function openTradeModal(resetForm = true) {
+  const modal = document.getElementById("tradeModal");
+  const saveBtn = document.getElementById("saveTradeBtn");
+
+  if (resetForm) {
+    resetTradeForm();
+  }
+
+  setDefaultTradeDateTime();
+
+  if (saveBtn) {
+    saveBtn.disabled = false;
+    saveBtn.innerText = editingTradeId ? "Update Trade" : "Save Trade";
+  }
+
+  modal.style.display = "flex";
 }
 
 function closeTradeModal() {
@@ -290,8 +319,6 @@ saveBtn.innerText = "Saving...";
   const exit = Number(document.getElementById("tradeExit").value);
   const qty = Number(document.getElementById("tradeQty").value);
   const segment = document.getElementById("tradeSegment").value;
-const lotSize = Number(document.getElementById("lotSize")?.value || document.getElementById("futureLotSize")?.value || 0);
-const lots = Number(document.getElementById("lots")?.value || 1);
   const direction = document.getElementById("tradeDirection").value;
 
 if (!entry || !exit || !qty || !direction) {
@@ -303,11 +330,7 @@ if (!entry || !exit || !qty || !direction) {
     return;
 }
 
- let finalQty = qty;
-
-if (segment === "Options" || segment === "Futures") {
-  finalQty = lotSize * lots;
-}
+ const finalQty = qty;
 
 let pnl = 0;
 
@@ -325,11 +348,11 @@ if (direction === "Long") {
 optionType: document.getElementById("optionType")?.value || "",
 strikePrice: document.getElementById("strikePrice")?.value || "",
 expiryDate: document.getElementById("expiryDate")?.value || "",
-premium: document.getElementById("premium")?.value || "",
-lotSize: document.getElementById("lotSize")?.value || "",
-lots: document.getElementById("lots")?.value || "",
+premium: "",
+lotSize: "",
+lots: "",
 futureExpiry: document.getElementById("futureExpiry")?.value || "",
-futureLotSize: document.getElementById("futureLotSize")?.value || "",
+futureLotSize: "",
     direction: direction,
     entryReason: document.getElementById("entryReason").value,
     setup: document.getElementById("tradeSetup").value,
@@ -387,6 +410,7 @@ if (!user) {
     editingTradeId = null;
 await loadTradesFromFirebase();
 resetTradeForm();
+closeTradeModal();
 
 saveBtn.disabled = false;
 saveBtn.innerText = "Save Trade";
@@ -425,6 +449,7 @@ return;
  showProcessWarning(trade);
 resetTradeForm();
 document.getElementById("entryReason").value = "";
+closeTradeModal();
 
 saveBtn.disabled = false;
 saveBtn.innerText = "Save Trade";
@@ -590,52 +615,7 @@ function updatePsychologyVerdict() {
     <p>${suggestion}</p>
   `;
 }
-function updateRuleBreakCostAnalyzer() {
-  const followedTrades = trades.filter((trade) => trade.rules === true);
-  const brokenTrades = trades.filter((trade) => trade.rules !== true);
 
-  const followedPnl = followedTrades.reduce(
-    (sum, trade) => sum + (Number(trade.pnl) || 0),
-    0
-  );
-
-  const brokenPnl = brokenTrades.reduce(
-    (sum, trade) => sum + (Number(trade.pnl) || 0),
-    0
-  );
-
-  const ruleBreakCost = brokenPnl < 0 ? Math.abs(brokenPnl) : 0;
-
-  const followedEl = document.getElementById("rulesFollowedPnl");
-  const brokenEl = document.getElementById("rulesBrokenPnl");
-  const costEl = document.getElementById("ruleBreakCost");
-  const messageEl = document.getElementById("ruleBreakMessage");
-
-  if (!followedEl || !brokenEl || !costEl || !messageEl) return;
-
-  followedEl.innerText = "₹" + followedPnl.toFixed(2);
-  brokenEl.innerText = "₹" + brokenPnl.toFixed(2);
-  costEl.innerText = "₹" + ruleBreakCost.toFixed(2);
-
-  followedEl.className = followedPnl >= 0 ? "profit" : "loss";
-  brokenEl.className = brokenPnl >= 0 ? "profit" : "loss";
-  costEl.className = ruleBreakCost > 0 ? "loss" : "profit";
-
-  if (!trades.length) {
-    messageEl.innerText = "Add trades to analyze rule discipline.";
-    return;
-  }
-
-  if (brokenTrades.length === 0) {
-    messageEl.innerText = "🔥 Great! No rule-breaking trades recorded yet.";
-  } else if (brokenPnl < 0) {
-    messageEl.innerText =
-      `⚠️ Rules break karne se approx ₹${ruleBreakCost.toFixed(2)} ka damage hua. Focus: rule follow = capital protect.`;
-  } else {
-    messageEl.innerText =
-      "✅ Rule-broken trades loss me nahi hain, but process risk still high hai. Discipline maintain rakho.";
-  }
-}
 function updateDashboard() {
   const totalTrades = trades.length;
   const totalPnl = trades.reduce((sum, trade) => sum + trade.pnl, 0);
@@ -667,6 +647,7 @@ function updateDashboard() {
     }
   });
   const bestSetupList = document.getElementById("bestSetupList");
+  if (!bestSetupList) return;
 bestSetupList.innerHTML = "";
 
 const setupStats = {};
@@ -690,6 +671,7 @@ trades.forEach((trade) => {
   }
 });
 const setupAnalysis = document.getElementById("setupAnalysis");
+if (!setupAnalysis) return;
 setupAnalysis.innerHTML = "";
 
 Object.entries(setupStats).forEach((item) => {
@@ -763,6 +745,7 @@ else {
     "✅ No losing setup detected yet.";
 }
 const bestTimeList = document.getElementById("bestTimeList");
+if (!bestTimeList) return;
 bestTimeList.innerHTML = "";
 
 const timeStats = {
@@ -849,7 +832,7 @@ if (worstTime) {
     "✅ No weak time slot detected yet.";
 }
   document.getElementById("totalTrades").innerText = totalTrades;
-  document.getElementById("totalPnl").innerText = totalPnl.toFixed(2);
+  document.getElementById("totalPnl").innerText = "₹" + totalPnl.toFixed(2);
   document.getElementById("winRate").innerText = winRate + "%";
   document.getElementById("rulesRate").innerText = rulesRate + "%";
   document.getElementById("heroPnl").innerText = "₹" + totalPnl.toFixed(2);
@@ -1384,19 +1367,21 @@ function editTrade(tradeId) {
     document.getElementById("tradeQuality").value = trade.tradeQuality || "";
     document.getElementById("psychologyNote").value = trade.note || "";
 
+    toggleOptionFields();
+    calculateRR();
     calculateDisciplineScore();
 
-    document.getElementById("journal").scrollIntoView({
-        behavior: "smooth"
-    });
-
-    alert("Trade loaded for editing. Update details and click Save Trade.");
+    openTradeModal(false);
 }
 function resetTradeForm() {
   document.getElementById("tradeDate").value = "";
+  document.getElementById("tradeTime").value = "";
   document.getElementById("tradeSymbol").value = "";
+  document.getElementById("tradeSegment").value = "";
   document.getElementById("tradeDirection").value = "";
   document.getElementById("tradeEntry").value = "";
+  document.getElementById("tradeSl").value = "";
+  document.getElementById("tradeTarget").value = "";
   document.getElementById("tradeExit").value = "";
   document.getElementById("tradeQty").value = "";
   document.getElementById("tradeSetup").value = "";
@@ -1409,12 +1394,21 @@ document.getElementById("riskRating").value = "0";
 document.getElementById("entryRating").value = "0";
 document.getElementById("tradeQuality").value = "";
   document.getElementById("psychologyNote").value = "";
-  document.getElementById("tradeTime").value = "";
 document.getElementById("entryReason").value = "";
 document.getElementById("beforeScreenshot").value = "";
 document.getElementById("afterScreenshot").value = "";
+document.getElementById("optionType").value = "";
+document.getElementById("strikePrice").value = "";
+document.getElementById("expiryDate").value = "";
+document.getElementById("premium").value = "";
+document.getElementById("lotSize").value = "";
+document.getElementById("lots").value = "";
+document.getElementById("futureExpiry").value = "";
+document.getElementById("futureLotSize").value = "";
 
 editingTradeId = null;
+  toggleOptionFields();
+  calculateRR();
   calculateDisciplineScore();
 }
   function revealSections() {
@@ -1437,6 +1431,21 @@ editingTradeId = null;
   }
 
   window.addEventListener('scroll', revealSections);
+  document.getElementById("tradeModal")?.addEventListener("click", (event) => {
+    if (event.target.id === "tradeModal") {
+      closeTradeModal();
+    }
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (
+      event.key === "Escape" &&
+      document.getElementById("tradeModal")?.style.display === "flex"
+    ) {
+      closeTradeModal();
+    }
+  });
+
   revealSections();
 window.saveTrade = saveTrade;
 window.toggleOptionFields = toggleOptionFields;
@@ -1444,7 +1453,233 @@ window.toggleAdvancedAnalytics = toggleAdvancedAnalytics;
 window.exportTradesCSV = exportTradesCSV;
 window.deleteTrade = deleteTrade;
 window.editTrade = editTrade;
-window.loginUser = loginUser;
-window.registerUser = registerUser;
 window.openLoginPopup = openLoginPopup;
 window.closeLoginPopup = closeLoginPopup;
+// ================= ADVANCED JOURNAL ANALYTICS =================
+
+function updateAdvancedAnalytics() {
+  if (!Array.isArray(trades) || trades.length === 0) {
+    return;
+  }
+
+  updateRuleBreakCostAnalyzer();
+  updateSetupAnalytics();
+  updateMonthlyReportCard();
+  updateBestWorstTrade();
+  updateTraderScore();
+  updateAIPatternDetector();
+}
+
+function getTradePnl(trade) {
+  return Number(trade.pnl || trade.profitLoss || trade.pl || 0);
+}
+
+function formatMoney(value) {
+  return "₹" + Number(value || 0).toFixed(2);
+}
+
+// 1. Rule Break Cost Analyzer
+function updateRuleBreakCostAnalyzer() {
+  let followedPnl = 0;
+  let brokenPnl = 0;
+
+  trades.forEach(trade => {
+    const pnl = getTradePnl(trade);
+
+    if (trade.rules === true || trade.rules === "Yes" || trade.rules === "Followed") {
+      followedPnl += pnl;
+    } else {
+      brokenPnl += pnl;
+    }
+  });
+
+  document.getElementById("rulesFollowedPnl").innerText = formatMoney(followedPnl);
+  document.getElementById("rulesBrokenPnl").innerText = formatMoney(brokenPnl);
+  safeText("rulesFollowedPnlAdvanced", formatMoney(followedPnl));
+  safeText("rulesBrokenPnlAdvanced", formatMoney(brokenPnl));
+
+  document.getElementById("rulesFollowedPnl").className = followedPnl >= 0 ? "profit-text" : "loss-text";
+  document.getElementById("rulesBrokenPnl").className = brokenPnl >= 0 ? "profit-text" : "loss-text";
+  const followedAdvanced = document.getElementById("rulesFollowedPnlAdvanced");
+  const brokenAdvanced = document.getElementById("rulesBrokenPnlAdvanced");
+  if (followedAdvanced) followedAdvanced.className = followedPnl >= 0 ? "profit-text" : "loss-text";
+  if (brokenAdvanced) brokenAdvanced.className = brokenPnl >= 0 ? "profit-text" : "loss-text";
+}
+
+// 2. Setup Analytics
+function updateSetupAnalytics() {
+  const setupData = {};
+
+  trades.forEach(trade => {
+    const setup = trade.setup || "No Setup";
+    const pnl = getTradePnl(trade);
+
+    if (!setupData[setup]) {
+      setupData[setup] = {
+        total: 0,
+        wins: 0,
+        pnl: 0
+      };
+    }
+
+    setupData[setup].total++;
+    setupData[setup].pnl += pnl;
+
+    if (pnl > 0) {
+      setupData[setup].wins++;
+    }
+  });
+
+  let html = "";
+
+  Object.keys(setupData).forEach(setup => {
+    const data = setupData[setup];
+    const winRate = ((data.wins / data.total) * 100).toFixed(0);
+
+    html += `
+      <div class="setup-row">
+        <span>${setup}</span>
+        <span>${winRate}% | ${formatMoney(data.pnl)}</span>
+      </div>
+    `;
+  });
+
+  document.getElementById("setupAnalyticsBox").innerHTML = html || "No setup data yet";
+}
+
+// 3. Monthly Report Card
+function updateMonthlyReportCard() {
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
+
+  const monthTrades = trades.filter(trade => {
+    if (!trade.date) return false;
+
+    const tradeDate = new Date(trade.date);
+    return tradeDate.getMonth() === currentMonth && tradeDate.getFullYear() === currentYear;
+  });
+
+  const totalTrades = monthTrades.length;
+  const winners = monthTrades.filter(trade => getTradePnl(trade) > 0);
+  const losers = monthTrades.filter(trade => getTradePnl(trade) < 0);
+
+  const totalProfit = winners.reduce((sum, trade) => sum + getTradePnl(trade), 0);
+  const totalLoss = Math.abs(losers.reduce((sum, trade) => sum + getTradePnl(trade), 0));
+
+  const winRate = totalTrades ? ((winners.length / totalTrades) * 100).toFixed(0) : 0;
+  const avgWinner = winners.length ? totalProfit / winners.length : 0;
+  const avgLoser = losers.length ? totalLoss / losers.length : 0;
+  const profitFactor = totalLoss ? (totalProfit / totalLoss).toFixed(2) : totalProfit > 0 ? "∞" : "0";
+
+  document.getElementById("monthTotalTrades").innerText = totalTrades;
+  document.getElementById("monthWinRate").innerText = winRate + "%";
+  document.getElementById("monthAvgWinner").innerText = formatMoney(avgWinner);
+  document.getElementById("monthAvgLoser").innerText = formatMoney(avgLoser);
+  document.getElementById("monthProfitFactor").innerText = profitFactor;
+}
+
+// 4. Best / Worst Trade Review
+function updateBestWorstTrade() {
+  const sortedTrades = [...trades].sort((a, b) => getTradePnl(b) - getTradePnl(a));
+
+  const bestTrade = sortedTrades[0];
+  const worstTrade = sortedTrades[sortedTrades.length - 1];
+
+  document.getElementById("bestTradeBox").innerText = bestTrade
+    ? `${bestTrade.symbol || "Trade"} | ${formatMoney(getTradePnl(bestTrade))}`
+    : "₹0";
+
+  document.getElementById("worstTradeBox").innerText = worstTrade
+    ? `${worstTrade.symbol || "Trade"} | ${formatMoney(getTradePnl(worstTrade))}`
+    : "₹0";
+
+  document.getElementById("bestTradeBox").className = "profit-text";
+  document.getElementById("worstTradeBox").className = "loss-text";
+}
+
+// 5. Trader Score
+function updateTraderScore() {
+  const totalTrades = trades.length;
+  const winners = trades.filter(trade => getTradePnl(trade) > 0).length;
+
+  const rulesFollowed = trades.filter(trade =>
+    trade.rules === true || trade.rules === "Yes" || trade.rules === "Followed"
+  ).length;
+
+  const noMistakeTrades = trades.filter(trade =>
+    !trade.mistake || trade.mistake === "No Mistake"
+  ).length;
+
+  const avgDiscipline =
+    trades.reduce((sum, trade) => sum + Number(trade.disciplineScore || 0), 0) / totalTrades;
+
+  const winRateScore = (winners / totalTrades) * 30;
+  const ruleScore = (rulesFollowed / totalTrades) * 30;
+  const mistakeScore = (noMistakeTrades / totalTrades) * 25;
+  const disciplineScore = (avgDiscipline / 5) * 15;
+
+  const finalScore = Math.round(winRateScore + ruleScore + mistakeScore + disciplineScore);
+
+  document.getElementById("traderScoreBox").innerText = finalScore + "/100";
+
+  let scoreText = "Needs improvement";
+
+  if (finalScore >= 80) {
+    scoreText = "Excellent discipline. Keep it up.";
+  } else if (finalScore >= 60) {
+    scoreText = "Good progress. Thoda aur consistency chahiye.";
+  } else if (finalScore >= 40) {
+    scoreText = "Average. Mistakes aur rule break kam karo.";
+  }
+
+  document.getElementById("traderScoreText").innerText = scoreText;
+}
+
+// 6. AI Pattern Detector
+function updateAIPatternDetector() {
+  const mistakeCount = {};
+  let totalLoss = 0;
+  let ruleBrokenLoss = 0;
+
+  trades.forEach(trade => {
+    const mistake = trade.mistake || "No Mistake";
+    const pnl = getTradePnl(trade);
+
+    if (!mistakeCount[mistake]) {
+      mistakeCount[mistake] = 0;
+    }
+
+    mistakeCount[mistake]++;
+
+    if (pnl < 0) {
+      totalLoss += Math.abs(pnl);
+
+      if (!(trade.rules === true || trade.rules === "Yes" || trade.rules === "Followed")) {
+        ruleBrokenLoss += Math.abs(pnl);
+      }
+    }
+  });
+
+  let topMistake = "No Mistake";
+  let maxCount = 0;
+
+  Object.keys(mistakeCount).forEach(mistake => {
+    if (mistake !== "No Mistake" && mistakeCount[mistake] > maxCount) {
+      maxCount = mistakeCount[mistake];
+      topMistake = mistake;
+    }
+  });
+
+  let message = `<span class="ai-good">No major negative pattern detected yet.</span>`;
+
+  if (topMistake !== "No Mistake") {
+    message = `<span class="ai-warning">Your most repeated mistake is ${topMistake}. Focus on reducing this first.</span>`;
+  }
+
+  if (totalLoss > 0 && ruleBrokenLoss / totalLoss > 0.5) {
+    message += `<br><br><span class="ai-warning">More than 50% of your loss is coming from rule broken trades.</span>`;
+  }
+
+  document.getElementById("aiPatternBox").innerHTML = message;
+}

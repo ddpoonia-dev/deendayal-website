@@ -15,14 +15,16 @@
 <body>
 
  <nav>
-  <h2>Deendayal</h2>
+  <a href="#home" class="brand-link">Deendayal</a>
 
   <div>
   <a href="#home">Home</a>
+  <a href="#journal">Journal</a>
   <a href="#about">About</a>
   <a href="#approach">Approach</a>
   <a href="#markets">Markets</a>
   <a href="#contact">Contact</a>
+  <span id="accountBadge" class="account-badge">Guest</span>
   <a href="javascript:void(0)" class="login-link" onclick="openLoginPopup()">Login</a>
 </div>              
 </nav>
@@ -84,6 +86,15 @@ risk management, and disciplined execution in Indian markets.
       <option value="profit">Profit</option>
       <option value="loss">Loss</option>
     </select>
+    <select id="dateFilter">
+      <option value="">All Dates</option>
+      <option value="today">Today</option>
+      <option value="week">This Week</option>
+      <option value="month">This Month</option>
+      <option value="custom">Custom Range</option>
+    </select>
+    <input id="dateFromFilter" type="date" class="custom-date-filter">
+    <input id="dateToFilter" type="date" class="custom-date-filter">
   </div>
 
   <div class="tracker-card dashboard-hero-card">
@@ -234,6 +245,9 @@ risk management, and disciplined execution in Indian markets.
           <span>Monthly Max Drawdown</span>
           <strong id="monthMaxDrawdown">₹0</strong>
         </div>
+      </div>
+      <div id="summaryInsights" class="summary-insights">
+        Add trades to generate monthly and weekly insights.
       </div>
     </div>
 
@@ -402,8 +416,18 @@ risk management, and disciplined execution in Indian markets.
             <option value="Scalping">Scalping</option>
           </select>
 
-          <label for="tradeMistake" class="field-label">Mistakes</label>
-          <select id="tradeMistake" multiple size="5">
+          <label class="field-label">Mistakes</label>
+          <div id="mistakeChips" class="mistake-chips">
+            <label><input type="checkbox" value="No Mistake">No Mistake</label>
+            <label><input type="checkbox" value="FOMO Entry">FOMO</label>
+            <label><input type="checkbox" value="Over Trading">Over Trading</label>
+            <label><input type="checkbox" value="No SL">No SL</label>
+            <label><input type="checkbox" value="Early Exit">Early Exit</label>
+            <label><input type="checkbox" value="Revenge Trade">Revenge</label>
+            <label><input type="checkbox" value="Late Entry">Late Entry</label>
+            <label><input type="checkbox" value="Ignored Trend">Ignored Trend</label>
+          </div>
+          <select id="tradeMistake" multiple size="5" class="hidden-compat-select">
             <option value="No Mistake">No Mistake</option>
             <option value="FOMO Entry">FOMO Entry</option>
             <option value="Over Trading">Over Trading</option>
@@ -479,6 +503,26 @@ risk management, and disciplined execution in Indian markets.
           </select>
 
           <textarea id="psychologyNote" placeholder="Short note: mindset, execution, learning, or mistake reason"></textarea>
+
+          <div class="trade-preview-box">
+            <h4>Trade Preview</h4>
+            <div>
+              <span>Estimated P&L</span>
+              <strong id="previewPnl">₹0</strong>
+            </div>
+            <div>
+              <span>Risk</span>
+              <strong id="previewRisk">₹0</strong>
+            </div>
+            <div>
+              <span>Reward</span>
+              <strong id="previewReward">₹0</strong>
+            </div>
+            <div>
+              <span>R:R</span>
+              <strong id="previewRR">0 : 0</strong>
+            </div>
+          </div>
 
           <div class="mind-score">
             Trader Score: <strong id="disciplineScore">0/100</strong><br>
@@ -636,13 +680,32 @@ risk management, and disciplined execution in Indian markets.
   <div class="login-box">
     <span class="close-login" onclick="closeLoginPopup()">×</span>
 
-    <h2>Login</h2>
+    <div class="login-head">
+      <h2>Welcome Back</h2>
+      <p>Login to sync your private trading journal.</p>
+    </div>
 
-<input id="loginEmail" type="email" placeholder="Email">
-<input id="loginPassword" type="password" placeholder="Password">
+    <label for="loginEmail" class="field-label">Email</label>
+    <input id="loginEmail" type="email" placeholder="your@email.com" autocomplete="email">
 
-<button onclick="loginUser()">Login</button>
-<button onclick="registerUser()">Create Account</button>
+    <label for="loginPassword" class="field-label">Password</label>
+    <div class="password-row">
+      <input id="loginPassword" type="password" placeholder="Password" autocomplete="current-password">
+      <button type="button" onclick="toggleLoginPassword()">Show</button>
+    </div>
+
+    <p id="loginStatus" class="login-status"></p>
+
+    <div class="login-actions">
+      <button id="loginSubmitBtn" onclick="loginUser()">Login</button>
+      <button id="registerSubmitBtn" onclick="registerUser()" class="secondary-login-btn">Create Account</button>
+    </div>
+  </div>
+</div>
+<div class="trade-detail-modal" id="tradeDetailModal">
+  <div class="trade-detail-box">
+    <button type="button" class="modal-close detail-close" onclick="closeTradeDetail()">×</button>
+    <div id="tradeDetailContent"></div>
   </div>
 </div>
 <footer>
@@ -653,8 +716,11 @@ risk management, and disciplined execution in Indian markets.
   </small>
 </footer>
 
-<script type="module" src="script.js?v=20260617-1134"></script>
+<script type="module" src="script.js?v=20260617-1215"></script>
 </body>
 </html>
+
+
+
 
 

@@ -81,6 +81,7 @@ async function loadTradesFromFirebase() {
     updateCalendarHeatmap();
     updateDailyPnlChart();
     updatePeriodSummary();
+    updatePsychologyVerdict();
     updateMonthlyDashboard();
 
 console.log("Trades loaded:", trades.length);
@@ -90,43 +91,103 @@ console.log("Trades loaded:", trades.length);
     }
 }
 window.loadTradesFromFirebase = loadTradesFromFirebase;
-window.registerUser = async function () {
-  const email = document.getElementById("loginEmail").value;
+
+function setLoginStatus(message, type = "") {
+  const status = document.getElementById("loginStatus");
+  if (!status) return;
+
+  status.textContent = message || "";
+  status.className = `login-status ${type}`.trim();
+}
+
+function setAuthLoading(isLoading, label = "Please wait...") {
+  const loginBtn = document.getElementById("loginSubmitBtn");
+  const registerBtn = document.getElementById("registerSubmitBtn");
+
+  [loginBtn, registerBtn].forEach((button) => {
+    if (!button) return;
+    button.disabled = isLoading;
+  });
+
+  if (loginBtn) {
+    loginBtn.textContent = isLoading ? label : "Login";
+  }
+}
+
+function getLoginCredentials() {
+  const email = document.getElementById("loginEmail").value.trim();
   const password = document.getElementById("loginPassword").value;
 
+  if (!email || !password) {
+    setLoginStatus("Email and password dono fill karo.", "error");
+    return null;
+  }
+
+  return { email, password };
+}
+
+function toggleLoginPassword() {
+  const input = document.getElementById("loginPassword");
+  const btn = document.querySelector(".password-row button");
+  if (!input) return;
+
+  const showing = input.type === "text";
+  input.type = showing ? "password" : "text";
+  if (btn) btn.textContent = showing ? "Show" : "Hide";
+}
+
+window.registerUser = async function () {
+  const credentials = getLoginCredentials();
+  if (!credentials) return;
+
   try {
-    await createUserWithEmailAndPassword(auth, email, password);
-    alert("Account created successfully");
+    setAuthLoading(true, "Creating...");
+    setLoginStatus("Creating your journal account...", "info");
+    await createUserWithEmailAndPassword(auth, credentials.email, credentials.password);
+    setLoginStatus("Account created. Your journal is ready.", "success");
     closeLoginPopup();
   } catch (error) {
-    alert(error.message);
+    setLoginStatus(error.message, "error");
+  } finally {
+    setAuthLoading(false);
   }
 };
 
 window.loginUser = async function () {
-  const email = document.getElementById("loginEmail").value;
-  const password = document.getElementById("loginPassword").value;
+  const credentials = getLoginCredentials();
+  if (!credentials) return;
 
   try {
-    await signInWithEmailAndPassword(auth, email, password);
+    setAuthLoading(true, "Logging in...");
+    setLoginStatus("Checking account and loading trades...", "info");
+    await signInWithEmailAndPassword(auth, credentials.email, credentials.password);
 
 await loadTradesFromFirebase();
 
-alert("Login successful");
+setLoginStatus("Login successful.", "success");
 closeLoginPopup();
   } catch (error) {
-    alert(error.message);
+    setLoginStatus(error.message, "error");
+  } finally {
+    setAuthLoading(false);
   }
 };
 onAuthStateChanged(auth, async (user) => {
   const loginBtn = document.querySelector(".login-link");
+  const accountBadge = document.getElementById("accountBadge");
 
   if (!loginBtn) return;
 
   if (user) {
     loginBtn.textContent = "Logout";
+    loginBtn.title = user.email || "Logged in";
+    if (accountBadge) {
+      accountBadge.textContent = user.email || "Logged in";
+      accountBadge.classList.add("active");
+    }
 
     loginBtn.onclick = async () => {
+      loginBtn.textContent = "Logging out...";
       await signOut(auth);
 
       trades = [];
@@ -138,11 +199,16 @@ onAuthStateChanged(auth, async (user) => {
       updateCalendarHeatmap();
       updateDailyPnlChart();
       updatePeriodSummary();
+      updatePsychologyVerdict();
 
       loginBtn.textContent = "Login";
+      loginBtn.title = "";
       loginBtn.onclick = () => openLoginPopup();
-
-      alert("Logged Out");
+      if (accountBadge) {
+        accountBadge.textContent = "Guest";
+        accountBadge.classList.remove("active");
+      }
+      setLoginStatus("Logged out successfully.", "success");
     };
 
     await loadTradesFromFirebase();
@@ -158,9 +224,15 @@ onAuthStateChanged(auth, async (user) => {
     updateCalendarHeatmap();
     updateDailyPnlChart();
     updatePeriodSummary();
+    updatePsychologyVerdict();
 
     loginBtn.textContent = "Login";
+    loginBtn.title = "";
     loginBtn.onclick = () => openLoginPopup();
+    if (accountBadge) {
+      accountBadge.textContent = "Guest";
+      accountBadge.classList.remove("active");
+    }
   }
 });
 
@@ -223,13 +295,19 @@ else {
   document.getElementById(id).addEventListener("change", calculateDisciplineScore);
 });
   document.getElementById("tradeEntry")
-?.addEventListener("input", calculateRR);
+?.addEventListener("input", updateTradePreview);
 
 document.getElementById("tradeSl")
-?.addEventListener("input", calculateRR);
+?.addEventListener("input", updateTradePreview);
 
 document.getElementById("tradeTarget")
-?.addEventListener("input", calculateRR);
+?.addEventListener("input", updateTradePreview);
+document.getElementById("tradeExit")
+?.addEventListener("input", updateTradePreview);
+document.getElementById("tradeQty")
+?.addEventListener("input", updateTradePreview);
+document.getElementById("tradeDirection")
+?.addEventListener("change", updateTradePreview);
 function calculateRR() {
 
   const entry =
@@ -256,6 +334,30 @@ function calculateRR() {
 
   document.getElementById("rrRatio").innerText =
     `1 : ${(reward / risk).toFixed(2)}`;
+}
+
+function updateTradePreview() {
+  const entry = Number(document.getElementById("tradeEntry").value);
+  const sl = Number(document.getElementById("tradeSl").value);
+  const target = Number(document.getElementById("tradeTarget").value);
+  const exit = Number(document.getElementById("tradeExit").value);
+  const qty = Number(document.getElementById("tradeQty").value);
+  const direction = document.getElementById("tradeDirection").value;
+
+  calculateRR();
+
+  const risk = entry && sl && qty ? Math.abs(entry - sl) * qty : 0;
+  const reward = entry && target && qty ? Math.abs(target - entry) * qty : 0;
+  let pnl = 0;
+
+  if (entry && exit && qty && direction) {
+    pnl = direction === "Long" ? (exit - entry) * qty : (entry - exit) * qty;
+  }
+
+  safeText("previewPnl", money(pnl));
+  safeText("previewRisk", money(risk));
+  safeText("previewReward", money(reward));
+  safeText("previewRR", risk ? `1 : ${(reward / risk).toFixed(2)}` : "0 : 0");
 }
 function toggleOptionFields() {
   const segment = document.getElementById("tradeSegment").value;
@@ -459,6 +561,7 @@ return;
   updateCalendarHeatmap();
   updateDailyPnlChart();
   updatePeriodSummary();
+  updatePsychologyVerdict();
  showProcessWarning(trade);
 resetTradeForm();
 document.getElementById("entryReason").value = "";
@@ -479,6 +582,12 @@ function money(value) {
 
 function getSelectedValues(id) {
   const el = document.getElementById(id);
+  if (id === "tradeMistake") {
+    const checked = Array.from(document.querySelectorAll("#mistakeChips input:checked"))
+      .map((input) => input.value)
+      .filter(Boolean);
+    if (checked.length) return checked;
+  }
   if (!el) return [];
 
   return Array.from(el.selectedOptions)
@@ -488,11 +597,18 @@ function getSelectedValues(id) {
 
 function setSelectedValues(id, values) {
   const el = document.getElementById(id);
-  if (!el) return;
-
   const selectedValues = Array.isArray(values)
     ? values
     : String(values || "").split(",").map((value) => value.trim()).filter(Boolean);
+
+  if (id === "tradeMistake") {
+    document.querySelectorAll("#mistakeChips input").forEach((input) => {
+      input.checked = selectedValues.includes(input.value);
+      input.closest("label")?.classList.toggle("active", input.checked);
+    });
+  }
+
+  if (!el) return;
 
   Array.from(el.options).forEach((option) => {
     option.selected = selectedValues.includes(option.value);
@@ -554,8 +670,28 @@ function updatePeriodSummary() {
   const makeStats = (tradeList) => {
     const pnl = tradeList.reduce((sum, trade) => sum + (Number(trade.pnl) || 0), 0);
     const wins = tradeList.filter((trade) => Number(trade.pnl) > 0).length;
+    const losses = tradeList.filter((trade) => Number(trade.pnl) < 0).length;
     const winRate = tradeList.length ? Math.round((wins / tradeList.length) * 100) : 0;
-    return { pnl, winRate, maxDrawdown: calculateMaxDrawdown(tradeList) };
+    const avgTrade = tradeList.length ? pnl / tradeList.length : 0;
+    const grossProfit = tradeList
+      .filter((trade) => Number(trade.pnl) > 0)
+      .reduce((sum, trade) => sum + (Number(trade.pnl) || 0), 0);
+    const grossLoss = Math.abs(
+      tradeList
+        .filter((trade) => Number(trade.pnl) < 0)
+        .reduce((sum, trade) => sum + (Number(trade.pnl) || 0), 0)
+    );
+    const profitFactor = grossLoss ? grossProfit / grossLoss : grossProfit > 0 ? Infinity : 0;
+    return {
+      pnl,
+      wins,
+      losses,
+      winRate,
+      avgTrade,
+      profitFactor,
+      maxDrawdown: calculateMaxDrawdown(tradeList),
+      total: tradeList.length
+    };
   };
 
   const week = makeStats(weekTrades);
@@ -567,6 +703,50 @@ function updatePeriodSummary() {
   safeText("monthPnlSummary", money(month.pnl));
   safeText("monthWinRateSummary", month.winRate + "%");
   safeText("monthMaxDrawdown", money(month.maxDrawdown));
+
+  const dayStats = {};
+  monthTrades.forEach((trade) => {
+    if (!trade.date) return;
+    dayStats[trade.date] = (dayStats[trade.date] || 0) + (Number(trade.pnl) || 0);
+  });
+
+  const sortedDays = Object.entries(dayStats).sort((a, b) => b[1] - a[1]);
+  const bestDay = sortedDays[0];
+  const worstDay = [...sortedDays].sort((a, b) => a[1] - b[1])[0];
+  const rulesFollowed = monthTrades.filter((trade) => trade.rules).length;
+  const ruleRate = monthTrades.length ? Math.round((rulesFollowed / monthTrades.length) * 100) : 0;
+
+  const topMistakes = {};
+  monthTrades.forEach((trade) => {
+    getTradeMistakes(trade).forEach((mistake) => {
+      if (!mistake || mistake === "No Mistake") return;
+      topMistakes[mistake] = (topMistakes[mistake] || 0) + 1;
+    });
+  });
+
+  const topMistake = Object.entries(topMistakes).sort((a, b) => b[1] - a[1])[0];
+  const summaryBox = document.getElementById("summaryInsights");
+
+  if (summaryBox) {
+    if (!monthTrades.length && !weekTrades.length) {
+      summaryBox.innerHTML = "Add trades to generate monthly and weekly insights.";
+    } else {
+      summaryBox.innerHTML = `
+        <div>
+          <strong>Month Snapshot</strong>
+          <p>${month.total} trades | Avg Trade ${money(month.avgTrade)} | Profit Factor ${Number.isFinite(month.profitFactor) ? month.profitFactor.toFixed(2) : "∞"} | Rules ${ruleRate}%</p>
+        </div>
+        <div>
+          <strong>Best / Worst Day</strong>
+          <p>Best: ${bestDay ? `${bestDay[0]} (${money(bestDay[1])})` : "No data"} | Worst: ${worstDay ? `${worstDay[0]} (${money(worstDay[1])})` : "No data"}</p>
+        </div>
+        <div>
+          <strong>Focus Point</strong>
+          <p>${topMistake ? `Most repeated mistake: ${topMistake[0]} (${topMistake[1]}x)` : "No repeated mistake detected yet."}</p>
+        </div>
+      `;
+    }
+  }
 }
 
 function updateMonthlyDashboard() {
@@ -680,51 +860,66 @@ function toggleAdvancedAnalytics() {
 }
 function updatePsychologyVerdict() {
   const box = document.getElementById("psychologyVerdict");
+  if (!box) return;
 
   if (!trades.length) {
     box.innerHTML = `
-      <h4>Psychology Verdict</h4>
+      <h4>Psychology Insights</h4>
       <p>No psychology data yet.</p>
     `;
     return;
   }
 
-  const avgPlan = trades.reduce((s, t) => s + (Number(t.plan) || 0), 0) / trades.length;
-  const avgSl = trades.reduce((s, t) => s + (Number(t.sl) || 0), 0) / trades.length;
-  const avgEmotion = trades.reduce((s, t) => s + (Number(t.emotion) || 0), 0) / trades.length;
-  const avgRisk = trades.reduce((s, t) => s + (Number(t.risk) || 0), 0) / trades.length;
-  const avgEntry = trades.reduce((s, t) => s + (Number(t.entryRating) || 0), 0) / trades.length;
+  const averages = {
+    Plan: trades.reduce((s, t) => s + (Number(t.plan) || 0), 0) / trades.length,
+    "SL Discipline": trades.reduce((s, t) => s + (Number(t.sl) || 0), 0) / trades.length,
+    Emotion: trades.reduce((s, t) => s + (Number(t.emotion) || 0), 0) / trades.length,
+    Risk: trades.reduce((s, t) => s + (Number(t.risk) || 0), 0) / trades.length,
+    Entry: trades.reduce((s, t) => s + (Number(t.entryRating) || 0), 0) / trades.length
+  };
 
-  const totalScore = avgPlan + avgSl + avgEmotion + avgRisk + avgEntry;
-  const psychologyScore = Math.round(totalScore * 4);
+  const psychologyScore = Math.round(
+    Object.values(averages).reduce((sum, value) => sum + value, 0) * 4
+  );
 
-  let verdict = "";
-  let suggestion = "";
+  const weakest = Object.entries(averages).sort((a, b) => a[1] - b[1])[0];
+  const ruleFollowed = trades.filter((trade) => trade.rules).length;
+  const ruleRate = Math.round((ruleFollowed / trades.length) * 100);
 
-  if (psychologyScore >= 85) {
-    verdict = "ðŸ”¥ Strong Trading Psychology";
-    suggestion = "Discipline strong hai. Ab size badhane se pehle consistency maintain karo.";
-  } else if (psychologyScore >= 70) {
-    verdict = "ðŸ“ˆ Good, But Needs Control";
-    suggestion = "Trading okay hai, lekin emotion aur execution ko aur tight karo.";
-  } else if (psychologyScore >= 50) {
-    verdict = "âš ï¸ Weak Psychology Zone";
-    suggestion = "Abhi size small rakho. Rules aur emotions pe kaam karo.";
-  } else {
-    verdict = "ðŸš¨ Dangerous Trading Behaviour";
-    suggestion = "Overtrading / emotion risk high hai. Capital protect karo, size reduce karo.";
-  }
+  const mistakeCounts = {};
+  trades.forEach((trade) => {
+    getTradeMistakes(trade).forEach((mistake) => {
+      if (!mistake || mistake === "No Mistake") return;
+      mistakeCounts[mistake] = (mistakeCounts[mistake] || 0) + 1;
+    });
+  });
+
+  const topMistake = Object.entries(mistakeCounts).sort((a, b) => b[1] - a[1])[0];
+
+  let verdict = "Needs Discipline Work";
+  if (psychologyScore >= 85) verdict = "Strong Trading Psychology";
+  else if (psychologyScore >= 70) verdict = "Good, But Needs Control";
+  else if (psychologyScore >= 50) verdict = "Weak Psychology Zone";
+
+  const nextAction = weakest
+    ? `Next focus: improve ${weakest[0]} from ${weakest[1].toFixed(1)}/5.`
+    : "Keep journaling every trade.";
 
   box.innerHTML = `
-    <h4>Psychology Verdict</h4>
-    <p><strong>${verdict}</strong></p>
-    <p>Overall Psychology Score: <strong>${psychologyScore}/100</strong></p>
-    <p>Plan: ${avgPlan.toFixed(1)}/5 | SL: ${avgSl.toFixed(1)}/5 | Emotion: ${avgEmotion.toFixed(1)}/5</p>
-    <p>Risk: ${avgRisk.toFixed(1)}/5 | Entry: ${avgEntry.toFixed(1)}/5</p>
-    <p>${suggestion}</p>
+    <h4>Psychology Insights</h4>
+    <div class="psychology-score-row">
+      <strong>${psychologyScore}/100</strong>
+      <span>${verdict}</span>
+    </div>
+    <div class="psychology-mini-grid">
+      <div><span>Rules Followed</span><strong>${ruleRate}%</strong></div>
+      <div><span>Weakest Area</span><strong>${weakest ? weakest[0] : "N/A"}</strong></div>
+      <div><span>Top Mistake</span><strong>${topMistake ? `${topMistake[0]} (${topMistake[1]}x)` : "None"}</strong></div>
+    </div>
+    <p>Plan ${averages.Plan.toFixed(1)}/5 | SL ${averages["SL Discipline"].toFixed(1)}/5 | Emotion ${averages.Emotion.toFixed(1)}/5 | Risk ${averages.Risk.toFixed(1)}/5 | Entry ${averages.Entry.toFixed(1)}/5</p>
+    <p>${nextAction}</p>
   `;
 }
-
 function updateDashboard() {
   const totalTrades = trades.length;
   const totalPnl = trades.reduce((sum, trade) => sum + trade.pnl, 0);
@@ -1397,6 +1592,41 @@ function renderTradeTableHeader() {
   `;
 }
 
+function isTradeInDateFilter(trade) {
+  const filter = document.getElementById("dateFilter")?.value || "";
+  if (!filter || !trade.date) return true;
+
+  const tradeDate = new Date(trade.date);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  if (filter === "today") {
+    const d = new Date(tradeDate);
+    d.setHours(0, 0, 0, 0);
+    return d.getTime() === today.getTime();
+  }
+
+  if (filter === "week") {
+    return tradeDate >= getWeekStart(new Date()) && tradeDate <= new Date();
+  }
+
+  if (filter === "month") {
+    return tradeDate.getMonth() === today.getMonth() && tradeDate.getFullYear() === today.getFullYear();
+  }
+
+  if (filter === "custom") {
+    const fromValue = document.getElementById("dateFromFilter")?.value;
+    const toValue = document.getElementById("dateToFilter")?.value;
+    const from = fromValue ? new Date(fromValue) : null;
+    const to = toValue ? new Date(toValue) : null;
+    if (from) from.setHours(0, 0, 0, 0);
+    if (to) to.setHours(23, 59, 59, 999);
+    return (!from || tradeDate >= from) && (!to || tradeDate <= to);
+  }
+
+  return true;
+}
+
 function renderTradeHistory() {
   const history = document.getElementById("tradeHistory");
   history.innerHTML = renderTradeTableHeader();
@@ -1414,7 +1644,7 @@ function renderTradeHistory() {
       (resultValue === "profit" && trade.pnl >= 0) ||
       (resultValue === "loss" && trade.pnl < 0);
 
-    return (symbolMatch || setupMatch) && directionMatch && resultMatch;
+    return (symbolMatch || setupMatch) && directionMatch && resultMatch && isTradeInDateFilter(trade);
   });
 
   if (trades.length === 0) {
@@ -1431,7 +1661,7 @@ function renderTradeHistory() {
     const pnlClass = trade.pnl >= 0 ? "profit" : "loss";
 
     history.innerHTML += `
-      <div class="trade-table-row">
+      <div class="trade-table-row" onclick="openTradeDetail('${trade.id}')">
         <div>
           <strong>${trade.symbol || "N/A"}</strong>
           <small>${trade.segment || "N/A"} | ${trade.time || "No Time"}</small>
@@ -1447,8 +1677,8 @@ function renderTradeHistory() {
         <div>${getMistakeText(trade)}</div>
         <div>${trade.rules ? "Yes" : "No"}</div>
         <div class="trade-actions">
-          <button type="button" onclick="editTrade('${trade.id}')" class="table-action edit-action">Edit</button>
-          <button type="button" onclick="deleteTrade('${trade.id}')" class="table-action delete-action">Delete</button>
+          <button type="button" onclick="event.stopPropagation(); editTrade('${trade.id}')" class="table-action edit-action">Edit</button>
+          <button type="button" onclick="event.stopPropagation(); deleteTrade('${trade.id}')" class="table-action delete-action">Delete</button>
         </div>
       </div>
     `;
@@ -1458,6 +1688,54 @@ function renderTradeHistory() {
 document.getElementById("tradeSearch").addEventListener("input", renderTradeHistory);
 document.getElementById("directionFilter").addEventListener("change", renderTradeHistory);
 document.getElementById("resultFilter").addEventListener("change", renderTradeHistory);
+document.getElementById("dateFilter").addEventListener("change", () => {
+  const isCustom = document.getElementById("dateFilter").value === "custom";
+  document.getElementById("dateFromFilter").classList.toggle("active", isCustom);
+  document.getElementById("dateToFilter").classList.toggle("active", isCustom);
+  renderTradeHistory();
+});
+document.getElementById("dateFromFilter").addEventListener("change", renderTradeHistory);
+document.getElementById("dateToFilter").addEventListener("change", renderTradeHistory);
+
+function openTradeDetail(tradeId) {
+  const trade = trades.find((item) => item.id === tradeId);
+  const modal = document.getElementById("tradeDetailModal");
+  const content = document.getElementById("tradeDetailContent");
+
+  if (!trade || !modal || !content) return;
+
+  const pnlClass = trade.pnl >= 0 ? "profit" : "loss";
+
+  content.innerHTML = `
+    <h3>${trade.symbol || "N/A"} <span>${trade.segment || "N/A"}</span></h3>
+    <div class="detail-grid">
+      <div><span>Date</span><strong>${trade.date || "N/A"}</strong></div>
+      <div><span>Time</span><strong>${trade.time || "N/A"}</strong></div>
+      <div><span>Direction</span><strong>${trade.direction || "N/A"}</strong></div>
+      <div><span>Setup</span><strong>${trade.setup || "No Setup"}</strong></div>
+      <div><span>Entry</span><strong>${money(trade.entry)}</strong></div>
+      <div><span>SL</span><strong>${money(trade.slPrice)}</strong></div>
+      <div><span>Target</span><strong>${money(trade.targetPrice)}</strong></div>
+      <div><span>Exit</span><strong>${money(trade.exit)}</strong></div>
+      <div><span>Qty</span><strong>${trade.qty || 0}</strong></div>
+      <div><span>P&L</span><strong class="${pnlClass}">${money(trade.pnl)}</strong></div>
+      <div><span>R:R</span><strong>${trade.rrRatio || "0 : 0"}</strong></div>
+      <div><span>Rules</span><strong>${trade.rules ? "Yes" : "No"}</strong></div>
+    </div>
+    <div class="detail-note">
+      <strong>Mistakes</strong>
+      <p>${getMistakeText(trade)}</p>
+      <strong>Note</strong>
+      <p>${trade.note || "No note added."}</p>
+    </div>
+  `;
+
+  modal.style.display = "flex";
+}
+
+function closeTradeDetail() {
+  document.getElementById("tradeDetailModal").style.display = "none";
+}
 function exportTradesCSV() {
 
   if (!trades.length) {
@@ -1542,6 +1820,8 @@ function editTrade(tradeId) {
     document.getElementById("tradeSegment").value = trade.segment || "";
     document.getElementById("tradeDirection").value = trade.direction || "";
     document.getElementById("tradeEntry").value = trade.entry || "";
+    document.getElementById("tradeSl").value = trade.slPrice || "";
+    document.getElementById("tradeTarget").value = trade.targetPrice || "";
     document.getElementById("tradeExit").value = trade.exit || "";
     document.getElementById("tradeQty").value = trade.qty || "";
     document.getElementById("entryReason").value = trade.entryReason || "";
@@ -1557,7 +1837,7 @@ function editTrade(tradeId) {
     document.getElementById("psychologyNote").value = trade.note || "";
 
     toggleOptionFields();
-    calculateRR();
+    updateTradePreview();
     calculateDisciplineScore();
 
     openTradeModal(false);
@@ -1597,7 +1877,7 @@ document.getElementById("futureLotSize").value = "";
 
 editingTradeId = null;
   toggleOptionFields();
-  calculateRR();
+  updateTradePreview();
   calculateDisciplineScore();
 }
   function revealSections() {
@@ -1612,7 +1892,10 @@ editingTradeId = null;
   }
 
   function openLoginPopup() {
+    setLoginStatus("");
+    setAuthLoading(false);
     document.getElementById("loginPopup").style.display = "flex";
+    setTimeout(() => document.getElementById("loginEmail")?.focus(), 50);
   }
 
   function closeLoginPopup() {
@@ -1625,6 +1908,27 @@ editingTradeId = null;
       closeTradeModal();
     }
   });
+  document.getElementById("tradeDetailModal")?.addEventListener("click", (event) => {
+    if (event.target.id === "tradeDetailModal") {
+      closeTradeDetail();
+    }
+  });
+
+  document.querySelectorAll("#mistakeChips input").forEach((input) => {
+    input.addEventListener("change", () => {
+      if (input.value === "No Mistake" && input.checked) {
+        document.querySelectorAll("#mistakeChips input").forEach((other) => {
+          if (other !== input) other.checked = false;
+        });
+      } else if (input.checked) {
+        const noMistake = document.querySelector('#mistakeChips input[value="No Mistake"]');
+        if (noMistake) noMistake.checked = false;
+      }
+
+      const values = Array.from(document.querySelectorAll("#mistakeChips input:checked")).map((item) => item.value);
+      setSelectedValues("tradeMistake", values);
+    });
+  });
 
   document.addEventListener("keydown", (event) => {
     if (
@@ -1632,6 +1936,12 @@ editingTradeId = null;
       document.getElementById("tradeModal")?.style.display === "flex"
     ) {
       closeTradeModal();
+    }
+    if (
+      event.key === "Escape" &&
+      document.getElementById("tradeDetailModal")?.style.display === "flex"
+    ) {
+      closeTradeDetail();
     }
   });
 
@@ -1644,6 +1954,9 @@ window.deleteTrade = deleteTrade;
 window.editTrade = editTrade;
 window.openLoginPopup = openLoginPopup;
 window.closeLoginPopup = closeLoginPopup;
+window.toggleLoginPassword = toggleLoginPassword;
+window.openTradeDetail = openTradeDetail;
+window.closeTradeDetail = closeTradeDetail;
 // ================= ADVANCED JOURNAL ANALYTICS =================
 
 function updateAdvancedAnalytics() {
@@ -1872,6 +2185,7 @@ function updateAIPatternDetector() {
 
   document.getElementById("aiPatternBox").innerHTML = message;
 }
+
 
 
 

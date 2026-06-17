@@ -1294,6 +1294,18 @@ nav h2 {
   text-shadow: 0 0 18px rgba(0, 200, 150, 0.35);
 }
 
+.brand-link {
+  color: #00f5bf;
+  text-decoration: none;
+  font-size: 24px;
+  font-weight: 800;
+  text-shadow: 0 0 18px rgba(0, 200, 150, 0.35);
+}
+
+.brand-link:hover {
+  color: #00f5bf;
+}
+
 nav a {
   position: relative;
   color: #c9d1d9;
@@ -1503,6 +1515,13 @@ footer small {
 
 .login-box h2 {
   color: #00f5bf;
+  margin-bottom: 8px;
+}
+
+.login-head p {
+  margin-bottom: 18px;
+  color: #9ca3af;
+  line-height: 1.5;
 }
 
 .login-box input {
@@ -1512,11 +1531,63 @@ footer small {
   border-radius: 14px;
 }
 
+.password-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: start;
+}
+
+.password-row button {
+  width: auto !important;
+  min-width: 72px;
+  padding: 13px 12px !important;
+  margin-top: 0 !important;
+}
+
+.login-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin-top: 14px;
+}
+
 .login-box button {
   background: linear-gradient(135deg, #00c896, #00f5ff);
   color: #00110d;
   border-radius: 14px;
   font-weight: 900;
+}
+
+.login-box button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.secondary-login-btn {
+  background: transparent !important;
+  color: #00f5bf !important;
+  border: 1px solid rgba(0, 200, 150, 0.45) !important;
+}
+
+.login-status {
+  min-height: 20px;
+  margin: 6px 0 0;
+  color: #9ca3af;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.login-status.error {
+  color: #ff6b6b;
+}
+
+.login-status.success {
+  color: #00ff9d;
+}
+
+.login-status.info {
+  color: #00f5ff;
 }
 
 .close-login {
@@ -2229,6 +2300,76 @@ select:focus {
   font-size: 18px;
 }
 
+.summary-insights {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.summary-insights div {
+  padding: 14px;
+  border-radius: 14px;
+  background: rgba(0, 245, 255, 0.06);
+  border: 1px solid rgba(0, 245, 255, 0.18);
+}
+
+.summary-insights strong {
+  display: block;
+  color: #00f5ff;
+  margin-bottom: 7px;
+}
+
+.summary-insights p {
+  margin: 0;
+  color: #c9d1d9;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.psychology-score-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 10px 0 14px;
+}
+
+.psychology-score-row strong {
+  color: #00ffb3;
+  font-size: 28px;
+}
+
+.psychology-score-row span {
+  color: #ffffff;
+  font-weight: 800;
+}
+
+.psychology-mini-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin: 12px 0;
+}
+
+.psychology-mini-grid div {
+  padding: 11px;
+  border-radius: 12px;
+  background: #050505;
+  border: 1px solid rgba(0, 200, 150, 0.2);
+}
+
+.psychology-mini-grid span {
+  display: block;
+  color: #8b949e;
+  font-size: 11px;
+  margin-bottom: 6px;
+}
+
+.psychology-mini-grid strong {
+  color: #fff;
+  font-size: 13px;
+}
+
 .trade-table-header,
 .trade-table-row {
   display: grid;
@@ -2311,5 +2452,204 @@ select:focus {
 @media (max-width: 900px) {
   .summary-grid {
     grid-template-columns: 1fr;
+  }
+
+  .summary-insights,
+  .psychology-mini-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.account-badge {
+  display: inline-flex;
+  max-width: 180px;
+  padding: 6px 10px;
+  margin-left: 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 200, 150, 0.22);
+  color: #8b949e;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.account-badge.active {
+  color: #00f5bf;
+  border-color: rgba(0, 200, 150, 0.55);
+}
+
+.journal-filters {
+  grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr !important;
+}
+
+.custom-date-filter {
+  display: none;
+}
+
+.custom-date-filter.active {
+  display: block;
+}
+
+.trade-table-row {
+  cursor: pointer;
+}
+
+.trade-table-row:hover {
+  border-color: rgba(0, 245, 255, 0.55);
+}
+
+.mistake-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.mistake-chips label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 10px;
+  border-radius: 999px;
+  background: #050505;
+  border: 1px solid rgba(0, 200, 150, 0.22);
+  color: #c9d1d9;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.mistake-chips label.active {
+  color: #00110d;
+  background: linear-gradient(135deg, #00c896, #00f5ff);
+  font-weight: 900;
+}
+
+.mistake-chips input {
+  width: auto !important;
+  margin: 0 !important;
+}
+
+.hidden-compat-select {
+  display: none !important;
+}
+
+.trade-preview-box {
+  margin-top: 16px;
+  padding: 15px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(0, 245, 255, 0.08), rgba(0, 0, 0, 0.9));
+  border: 1px solid rgba(0, 245, 255, 0.24);
+}
+
+.trade-preview-box h4 {
+  color: #00f5ff;
+  margin-bottom: 12px;
+}
+
+.trade-preview-box div {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.trade-preview-box div:last-child {
+  border-bottom: none;
+}
+
+.trade-preview-box span {
+  color: #9ca3af;
+  font-size: 13px;
+}
+
+.trade-preview-box strong {
+  color: #00ffb3;
+}
+
+.trade-detail-modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 1000000;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.78);
+  backdrop-filter: blur(12px);
+}
+
+.trade-detail-box {
+  width: min(860px, 96vw);
+  max-height: 88vh;
+  overflow-y: auto;
+  position: relative;
+  padding: 26px;
+  border-radius: 22px;
+  background: linear-gradient(145deg, rgba(0, 200, 150, 0.1), #050505);
+  border: 1px solid rgba(0, 200, 150, 0.35);
+  box-shadow: 0 0 60px rgba(0, 200, 150, 0.18);
+}
+
+.detail-close {
+  position: absolute;
+  right: 18px;
+  top: 18px;
+}
+
+#tradeDetailContent h3 {
+  color: #fff;
+  margin-bottom: 18px;
+}
+
+#tradeDetailContent h3 span {
+  color: #00f5bf;
+  font-size: 14px;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.detail-grid div,
+.detail-note {
+  padding: 13px;
+  border-radius: 14px;
+  background: #050505;
+  border: 1px solid rgba(0, 200, 150, 0.2);
+}
+
+.detail-grid span {
+  display: block;
+  color: #8b949e;
+  font-size: 11px;
+  margin-bottom: 7px;
+}
+
+.detail-grid strong {
+  color: #fff;
+}
+
+.detail-note {
+  margin-top: 14px;
+}
+
+.detail-note strong {
+  color: #00f5bf;
+}
+
+.detail-note p {
+  margin: 8px 0 14px;
+  color: #c9d1d9;
+}
+
+@media (max-width: 900px) {
+  .journal-filters,
+  .detail-grid {
+    grid-template-columns: 1fr !important;
   }
 }

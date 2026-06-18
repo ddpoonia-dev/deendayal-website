@@ -5,7 +5,8 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
-  onAuthStateChanged
+  onAuthStateChanged,
+  sendPasswordResetEmail
 } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
 
 import {
@@ -48,6 +49,7 @@ window.serverTimestamp = serverTimestamp;
 window.createUserWithEmailAndPassword = createUserWithEmailAndPassword;
 window.signInWithEmailAndPassword = signInWithEmailAndPassword;
 window.signOut = signOut;
+window.sendPasswordResetEmail = sendPasswordResetEmail;
 window.deleteDoc = deleteDoc;
 window.doc = doc;
 window.updateDoc = updateDoc;
@@ -103,8 +105,9 @@ function setLoginStatus(message, type = "") {
 function setAuthLoading(isLoading, label = "Please wait...") {
   const loginBtn = document.getElementById("loginSubmitBtn");
   const registerBtn = document.getElementById("registerSubmitBtn");
+  const forgotBtn = document.getElementById("forgotPasswordBtn");
 
-  [loginBtn, registerBtn].forEach((button) => {
+  [loginBtn, registerBtn, forgotBtn].forEach((button) => {
     if (!button) return;
     button.disabled = isLoading;
   });
@@ -126,6 +129,18 @@ function getLoginCredentials() {
   return { email, password };
 }
 
+function getLoginEmail() {
+  const email = document.getElementById("loginEmail").value.trim();
+
+  if (!email) {
+    setLoginStatus("Enter your email to reset your password.", "error");
+    document.getElementById("loginEmail")?.focus();
+    return null;
+  }
+
+  return email;
+}
+
 function toggleLoginPassword() {
   const input = document.getElementById("loginPassword");
   const btn = document.querySelector(".password-row button");
@@ -135,6 +150,22 @@ function toggleLoginPassword() {
   input.type = showing ? "password" : "text";
   if (btn) btn.textContent = showing ? "Show" : "Hide";
 }
+
+window.forgotPassword = async function () {
+  const email = getLoginEmail();
+  if (!email) return;
+
+  try {
+    setAuthLoading(true, "Sending...");
+    setLoginStatus("Sending password reset link...", "info");
+    await sendPasswordResetEmail(auth, email);
+    setLoginStatus("Password reset link sent. Please check your inbox or spam folder.", "success");
+  } catch (error) {
+    setLoginStatus(error.message, "error");
+  } finally {
+    setAuthLoading(false);
+  }
+};
 
 window.registerUser = async function () {
   const credentials = getLoginCredentials();

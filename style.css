@@ -1545,6 +1545,32 @@ footer small {
   margin-top: 0 !important;
 }
 
+.forgot-password-btn {
+  width: auto !important;
+  margin: 2px 0 4px auto !important;
+  padding: 0 !important;
+  display: block;
+  border: 0 !important;
+  background: transparent !important;
+  color: #00f5ff !important;
+  font-size: 13px;
+  font-weight: 800;
+  box-shadow: none !important;
+  cursor: pointer;
+}
+
+.forgot-password-btn:hover {
+  color: #00ff9d !important;
+  text-decoration: underline;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.forgot-password-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .login-actions {
   display: grid;
   grid-template-columns: 1fr;
@@ -2664,6 +2690,13 @@ select:focus {
   nav {
     padding: 18px 14px !important;
     align-items: center !important;
+  }
+
+  .brand-link {
+    margin-left: 0 !important;
+    font-size: 26px !important;
+    line-height: 1.15;
+    text-align: center;
   }
 
   nav > div {

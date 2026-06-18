@@ -2653,3 +2653,127 @@ select:focus {
     grid-template-columns: 1fr !important;
   }
 }
+
+@media (max-width: 768px) {
+  html,
+  body {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  nav {
+    padding: 18px 14px !important;
+    align-items: center !important;
+  }
+
+  nav > div {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    gap: 14px 18px !important;
+  }
+
+  nav a,
+  .account-badge {
+    margin-left: 0 !important;
+  }
+
+  .account-badge {
+    max-width: 150px;
+    justify-content: center;
+  }
+
+  .journal {
+    padding-left: 14px !important;
+    padding-right: 14px !important;
+  }
+
+  .trade-modal {
+    align-items: flex-start !important;
+    justify-content: center !important;
+    overflow-y: auto !important;
+    padding: 12px !important;
+  }
+
+  .trade-modal-box {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 18px !important;
+    border-radius: 18px !important;
+  }
+
+  .modal-header,
+  .modal-footer {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+
+  .modal-header h2 {
+    font-size: 22px;
+    line-height: 1.2;
+  }
+
+  .modal-close {
+    align-self: flex-end;
+  }
+
+  .modal-grid,
+  .psychology-mini-grid,
+  .summary-insights {
+    grid-template-columns: 1fr !important;
+  }
+
+  .trade-modal label {
+    font-size: 14px;
+    line-height: 1.25;
+  }
+
+  .trade-modal input,
+  .trade-modal select,
+  .trade-modal textarea {
+    min-height: 46px;
+    font-size: 16px;
+  }
+
+  .modal-footer label,
+  .modal-footer input,
+  .modal-footer button,
+  #saveTradeBtn {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .modal-footer input[type="file"] {
+    padding: 11px 12px !important;
+    border-radius: 14px !important;
+    border: 1px solid rgba(0, 200, 150, 0.35) !important;
+    background: #050505 !important;
+    color: #c9d1d9 !important;
+  }
+
+  #saveTradeBtn {
+    min-height: 50px;
+    margin-top: 4px;
+  }
+
+  .trade-preview-box,
+  .mind-score,
+  .detail-note {
+    overflow-wrap: anywhere;
+  }
+
+  .trade-detail-modal {
+    align-items: flex-start !important;
+    overflow-y: auto !important;
+    padding: 12px !important;
+  }
+
+  .trade-detail-box {
+    width: 100% !important;
+    max-height: none !important;
+    padding: 18px !important;
+    border-radius: 18px !important;
+  }
+}

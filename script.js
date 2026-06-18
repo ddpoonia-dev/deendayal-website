@@ -144,8 +144,13 @@ window.registerUser = async function () {
     setAuthLoading(true, "Creating...");
     setLoginStatus("Creating your journal account...", "info");
     await createUserWithEmailAndPassword(auth, credentials.email, credentials.password);
+    const shouldOpenTradeModal = pendingTradeModalAfterLogin;
+    pendingTradeModalAfterLogin = false;
     setLoginStatus("Account created. Your journal is ready.", "success");
     closeLoginPopup();
+    if (shouldOpenTradeModal) {
+      openTradeModal();
+    }
   } catch (error) {
     setLoginStatus(error.message, "error");
   } finally {
@@ -164,8 +169,13 @@ window.loginUser = async function () {
 
 await loadTradesFromFirebase();
 
+const shouldOpenTradeModal = pendingTradeModalAfterLogin;
+pendingTradeModalAfterLogin = false;
 setLoginStatus("Login successful.", "success");
 closeLoginPopup();
+if (shouldOpenTradeModal) {
+  openTradeModal();
+}
   } catch (error) {
     setLoginStatus(error.message, "error");
   } finally {
@@ -188,6 +198,7 @@ onAuthStateChanged(auth, async (user) => {
 
     loginBtn.onclick = async () => {
       loginBtn.textContent = "Logging out...";
+      pendingTradeModalAfterLogin = false;
       await signOut(auth);
 
       trades = [];
@@ -241,6 +252,7 @@ onAuthStateChanged(auth, async (user) => {
   const reveals = document.querySelectorAll('.reveal');
 let trades = [];
 let editingTradeId = null;
+let pendingTradeModalAfterLogin = false;
 
 function calculateDisciplineScore() {
   const plan = Number(document.getElementById("planRating").value);
@@ -392,6 +404,13 @@ function setDefaultTradeDateTime() {
 }
 
 function openTradeModal(resetForm = true) {
+  if (!auth.currentUser) {
+    pendingTradeModalAfterLogin = true;
+    openLoginPopup();
+    setLoginStatus("Please login first to add a trade.", "info");
+    return;
+  }
+
   const modal = document.getElementById("tradeModal");
   const saveBtn = document.getElementById("saveTradeBtn");
 
@@ -418,6 +437,14 @@ window.closeTradeModal = closeTradeModal;
 
 async function saveTrade() {
  const saveBtn = document.getElementById("saveTradeBtn");
+
+if (!auth.currentUser) {
+  pendingTradeModalAfterLogin = true;
+  closeTradeModal();
+  openLoginPopup();
+  setLoginStatus("Please login first to save a trade.", "info");
+  return;
+}
 
 if (saveBtn.disabled) return;
 

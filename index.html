@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -8,7 +8,7 @@
   <meta name="description" content="Deendayal - Professional intraday trader specializing in price action, risk management, and NSE F&O trading in Indian markets.">
   <meta name="author" content="Deendayal">
   
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=20260618-mobilefix">
   <link rel="icon" type="image/png" href="logo.png">
 </head>
 
@@ -107,7 +107,7 @@ risk management, and disciplined execution in Indian markets.
       </div>
       <div>
         <span>Total P&L</span>
-        <strong id="totalPnl">₹0</strong>
+        <strong id="totalPnl">?0</strong>
       </div>
       <div>
         <span>Win Rate</span>
@@ -137,7 +137,7 @@ risk management, and disciplined execution in Indian markets.
       <div class="analytics-hero">
         <div>
           <span>Net P&L</span>
-          <strong id="heroPnl">₹0</strong>
+          <strong id="heroPnl">?0</strong>
         </div>
         <div>
           <span>Win Rate</span>
@@ -159,17 +159,17 @@ risk management, and disciplined execution in Indian markets.
   <div class="rule-cost-grid">
     <div>
       <span>Rules Followed P&L</span>
-      <strong id="rulesFollowedPnl">₹0</strong>
+      <strong id="rulesFollowedPnl">?0</strong>
     </div>
 
     <div>
       <span>Rules Broken P&L</span>
-      <strong id="rulesBrokenPnl">₹0</strong>
+      <strong id="rulesBrokenPnl">?0</strong>
     </div>
 
     <div>
       <span>Rule Break Cost</span>
-      <strong id="ruleBreakCost">₹0</strong>
+      <strong id="ruleBreakCost">?0</strong>
     </div>
   </div>
 
@@ -182,11 +182,11 @@ risk management, and disciplined execution in Indian markets.
         </div>
         <div class="metric-card duplicate-metric">
           <span>Best Trade</span>
-          <strong id="proBestTrade">₹0</strong>
+          <strong id="proBestTrade">?0</strong>
         </div>
         <div class="metric-card duplicate-metric">
           <span>Worst Trade</span>
-          <strong id="proWorstTrade">₹0</strong>
+          <strong id="proWorstTrade">?0</strong>
         </div>
         <div class="metric-card duplicate-metric">
           <span>Rules Followed</span>
@@ -223,7 +223,7 @@ risk management, and disciplined execution in Indian markets.
       <div class="summary-grid">
         <div>
           <span>This Week P&L</span>
-          <strong id="weekPnl">₹0</strong>
+          <strong id="weekPnl">?0</strong>
         </div>
         <div>
           <span>Weekly Win Rate</span>
@@ -231,11 +231,11 @@ risk management, and disciplined execution in Indian markets.
         </div>
         <div>
           <span>Weekly Max Drawdown</span>
-          <strong id="weekMaxDrawdown">₹0</strong>
+          <strong id="weekMaxDrawdown">?0</strong>
         </div>
         <div>
           <span>This Month P&L</span>
-          <strong id="monthPnlSummary">₹0</strong>
+          <strong id="monthPnlSummary">?0</strong>
         </div>
         <div>
           <span>Monthly Win Rate</span>
@@ -243,7 +243,7 @@ risk management, and disciplined execution in Indian markets.
         </div>
         <div>
           <span>Monthly Max Drawdown</span>
-          <strong id="monthMaxDrawdown">₹0</strong>
+          <strong id="monthMaxDrawdown">?0</strong>
         </div>
       </div>
       <div id="summaryInsights" class="summary-insights">
@@ -286,9 +286,9 @@ risk management, and disciplined execution in Indian markets.
     <div class="advanced-card duplicate-section">
       <h3>Rule Break Cost Analyzer</h3>
       <p>Rules Followed P&L</p>
-      <h2 id="rulesFollowedPnlAdvanced">₹0</h2>
+      <h2 id="rulesFollowedPnlAdvanced">?0</h2>
       <p>Rules Broken P&L</p>
-      <h2 id="rulesBrokenPnlAdvanced">₹0</h2>
+      <h2 id="rulesBrokenPnlAdvanced">?0</h2>
     </div>
 
     <div class="advanced-card">
@@ -303,17 +303,17 @@ risk management, and disciplined execution in Indian markets.
       <h3>Monthly Report Card</h3>
       <p>Total Trades: <b id="monthTotalTrades">0</b></p>
       <p>Win Rate: <b id="monthWinRate">0%</b></p>
-      <p>Avg Winner: <b id="monthAvgWinner">₹0</b></p>
-      <p>Avg Loser: <b id="monthAvgLoser">₹0</b></p>
+      <p>Avg Winner: <b id="monthAvgWinner">?0</b></p>
+      <p>Avg Loser: <b id="monthAvgLoser">?0</b></p>
       <p>Profit Factor: <b id="monthProfitFactor">0</b></p>
     </div>
 
     <div class="advanced-card">
       <h3>Best / Worst Trade Review</h3>
       <p>Best Trade</p>
-      <h2 id="bestTradeBox">₹0</h2>
+      <h2 id="bestTradeBox">?0</h2>
       <p>Worst Trade</p>
-      <h2 id="worstTradeBox">₹0</h2>
+      <h2 id="worstTradeBox">?0</h2>
     </div>
 
     <div class="advanced-card">
@@ -340,7 +340,7 @@ risk management, and disciplined execution in Indian markets.
 
       <div class="modal-header">
         <h3>Add Trade</h3>
-        <button type="button" onclick="closeTradeModal()" class="modal-close">×</button>
+        <button type="button" onclick="closeTradeModal()" class="modal-close">�</button>
       </div>
 
       <div class="modal-grid">
@@ -508,15 +508,15 @@ risk management, and disciplined execution in Indian markets.
             <h4>Trade Preview</h4>
             <div>
               <span>Estimated P&L</span>
-              <strong id="previewPnl">₹0</strong>
+              <strong id="previewPnl">?0</strong>
             </div>
             <div>
               <span>Risk</span>
-              <strong id="previewRisk">₹0</strong>
+              <strong id="previewRisk">?0</strong>
             </div>
             <div>
               <span>Reward</span>
-              <strong id="previewReward">₹0</strong>
+              <strong id="previewReward">?0</strong>
             </div>
             <div>
               <span>R:R</span>
@@ -678,7 +678,7 @@ risk management, and disciplined execution in Indian markets.
 </section>
 <div class="login-popup" id="loginPopup">
   <div class="login-box">
-    <span class="close-login" onclick="closeLoginPopup()">×</span>
+    <span class="close-login" onclick="closeLoginPopup()">�</span>
 
     <div class="login-head">
       <h2>Welcome Back</h2>
@@ -704,21 +704,22 @@ risk management, and disciplined execution in Indian markets.
 </div>
 <div class="trade-detail-modal" id="tradeDetailModal">
   <div class="trade-detail-box">
-    <button type="button" class="modal-close detail-close" onclick="closeTradeDetail()">×</button>
+    <button type="button" class="modal-close detail-close" onclick="closeTradeDetail()">�</button>
     <div id="tradeDetailContent"></div>
   </div>
 </div>
 <footer>
-  © <span id="year"></span> Deendayal | Professional Intraday Trader
+  � <span id="year"></span> Deendayal | Professional Intraday Trader
   <br><br>
   <small>
     Strategy Over Emotion. Consistency Over Luck.
   </small>
 </footer>
 
-<script type="module" src="script.js?v=20260617-1215"></script>
+<script type="module" src="script.js?v=20260618-mobilefix"></script>
 </body>
 </html>
+
 
 
 

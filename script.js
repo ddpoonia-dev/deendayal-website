@@ -15,11 +15,13 @@ import {
   addDoc,
   serverTimestamp,
   getDocs,
+  getDoc,
   query,
   orderBy,
   deleteDoc,
   doc,
-  updateDoc
+  updateDoc,
+  setDoc
 } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 
 // Firebase Config
@@ -42,6 +44,7 @@ window.auth = auth;
 window.db = db;
 window.addDoc = addDoc;
 window.getDocs = getDocs;
+window.getDoc = getDoc;
 window.query = query;
 window.orderBy = orderBy;
 window.collection = collection;
@@ -53,8 +56,10 @@ window.sendPasswordResetEmail = sendPasswordResetEmail;
 window.deleteDoc = deleteDoc;
 window.doc = doc;
 window.updateDoc = updateDoc;
+window.setDoc = setDoc;
 
 console.log("Firebase Connected Successfully");
+let currentUserProfile = null;
 async function loadTradesFromFirebase() {
     try {
         const user = auth.currentUser;
@@ -85,6 +90,7 @@ async function loadTradesFromFirebase() {
     updatePeriodSummary();
     updatePsychologyVerdict();
     updateMonthlyDashboard();
+    updateAccountBadge(user);
 
 console.log("Trades loaded:", trades.length);
 
@@ -100,6 +106,194 @@ function setLoginStatus(message, type = "") {
 
   status.textContent = message || "";
   status.className = `login-status ${type}`.trim();
+}
+
+function getNameFromEmail(email = "") {
+  const namePart = email.split("@")[0] || "Trader";
+  return namePart
+    .replace(/[._-]+/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+async function loadUserProfile(user) {
+  if (!user) return null;
+
+  try {
+    const profileRef = doc(db, "users", user.uid);
+    const profileSnap = await getDoc(profileRef);
+    const fallbackName = getNameFromEmail(user.email || "");
+    const profile = profileSnap.exists()
+      ? profileSnap.data()
+      : { name: fallbackName, email: user.email };
+
+    currentUserProfile = {
+      name: profile.name || fallbackName,
+      email: profile.email || user.email || "",
+      createdAt: profile.createdAt || null
+    };
+
+    if (!profileSnap.exists()) {
+      await setDoc(profileRef, {
+        name: currentUserProfile.name,
+        email: currentUserProfile.email,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+    }
+
+    return currentUserProfile;
+  } catch (error) {
+    console.error("Profile load error:", error);
+    currentUserProfile = {
+      name: getNameFromEmail(user.email || ""),
+      email: user.email || ""
+    };
+    return currentUserProfile;
+  }
+}
+
+async function saveUserProfile(user, name) {
+  if (!user || !name) return null;
+
+  const cleanName = name.trim();
+  if (!cleanName) return null;
+
+  const profile = {
+    name: cleanName,
+    email: user.email || "",
+    updatedAt: serverTimestamp()
+  };
+
+  currentUserProfile = {
+    ...(currentUserProfile || {}),
+    name: cleanName,
+    email: user.email || ""
+  };
+
+  try {
+    await setDoc(doc(db, "users", user.uid), profile, { merge: true });
+  } catch (error) {
+    console.error("Profile save error:", error);
+  }
+
+  return currentUserProfile;
+}
+
+function getTraderBadge() {
+  const totalTrades = trades.length;
+  if (!totalTrades) {
+    return {
+      title: "New Journaler",
+      level: "Starter",
+      score: 0,
+      detail: "Add trades to unlock your psychology badge."
+    };
+  }
+
+  const avgDiscipline =
+    trades.reduce((sum, trade) => sum + Number(trade.disciplineScore || 0), 0) / totalTrades;
+  const ruleRate =
+    (trades.filter((trade) => trade.rules === true || trade.rules === "Yes" || trade.rules === "Followed").length / totalTrades) * 100;
+  const cleanRate =
+    (trades.filter((trade) => !trade.mistake || trade.mistake === "No Mistake").length / totalTrades) * 100;
+  const psychologyScore = Math.round((avgDiscipline / 5) * 55 + ruleRate * 0.3 + cleanRate * 0.15);
+
+  if (psychologyScore >= 85) {
+    return { title: "Elite Discipline Trader", level: "Elite", score: psychologyScore, detail: "Strong psychology, rule control, and clean execution." };
+  }
+  if (psychologyScore >= 70) {
+    return { title: "Consistent Process Trader", level: "Pro", score: psychologyScore, detail: "Good process. Keep reducing repeat mistakes." };
+  }
+  if (psychologyScore >= 50) {
+    return { title: "Developing Trader", level: "Builder", score: psychologyScore, detail: "Your journal shows progress, but discipline still needs work." };
+  }
+  return { title: "Discipline Under Training", level: "Focus", score: psychologyScore, detail: "Focus on rules, mistakes, and emotional control first." };
+}
+
+function updateAccountBadge(user) {
+  const accountBadge = document.getElementById("accountBadge");
+  if (!accountBadge) return;
+
+  if (!user) {
+    accountBadge.textContent = "Guest";
+    accountBadge.title = "Login to view profile";
+    accountBadge.classList.remove("active");
+    accountBadge.onclick = null;
+    return;
+  }
+
+  const displayName = currentUserProfile?.name || getNameFromEmail(user.email || "");
+  const badge = getTraderBadge();
+  accountBadge.textContent = displayName;
+  accountBadge.title = `${badge.title} - click to view profile`;
+  accountBadge.classList.add("active");
+  accountBadge.onclick = openProfileModal;
+}
+
+function updateHeroAccountButton(user) {
+  const button = document.getElementById("heroAccountBtn");
+  if (!button) return;
+
+  if (user) {
+    button.textContent = "View Profile";
+    button.onclick = openProfileModal;
+    button.setAttribute("aria-label", "View your trader profile");
+  } else {
+    button.textContent = "Login / Create Account";
+    button.onclick = openLoginPopup;
+    button.setAttribute("aria-label", "Login or create account");
+  }
+}
+
+function openProfileModal() {
+  const user = auth.currentUser;
+  const modal = document.getElementById("profileModal");
+  const content = document.getElementById("profileContent");
+  if (!modal || !content) return;
+
+  if (!user) {
+    openLoginPopup();
+    return;
+  }
+
+  const profile = currentUserProfile || {
+    name: getNameFromEmail(user.email || ""),
+    email: user.email || ""
+  };
+  const badge = getTraderBadge();
+  const pnl = trades.reduce((sum, trade) => sum + getTradePnl(trade), 0);
+  const winners = trades.filter((trade) => getTradePnl(trade) > 0).length;
+  const winRate = trades.length ? Math.round((winners / trades.length) * 100) : 0;
+
+  content.innerHTML = `
+    <div class="profile-head">
+      <div class="profile-avatar">${(profile.name || "T").slice(0, 1).toUpperCase()}</div>
+      <div>
+        <span>Trader Profile</span>
+        <h2>${profile.name || "Trader"}</h2>
+        <p>${profile.email || user.email || ""}</p>
+      </div>
+    </div>
+    <div class="trader-badge-card">
+      <span>${badge.level} Badge</span>
+      <strong>${badge.title}</strong>
+      <p>${badge.detail}</p>
+      <div class="badge-meter"><i style="width:${Math.min(100, badge.score)}%"></i></div>
+      <small>Psychology Score: ${badge.score}/100</small>
+    </div>
+    <div class="profile-stats">
+      <div><span>Total Trades</span><strong>${trades.length}</strong></div>
+      <div><span>Win Rate</span><strong>${winRate}%</strong></div>
+      <div><span>Total P&L</span><strong>${money(pnl)}</strong></div>
+    </div>
+    <p class="profile-note">Badge is calculated from your journal discipline score, rules followed, and mistake tracking.</p>
+  `;
+
+  modal.style.display = "flex";
+}
+
+function closeProfileModal() {
+  document.getElementById("profileModal").style.display = "none";
 }
 
 function setAuthLoading(isLoading, label = "Please wait...") {
@@ -118,15 +312,23 @@ function setAuthLoading(isLoading, label = "Please wait...") {
 }
 
 function getLoginCredentials() {
+  const name = document.getElementById("loginName")?.value.trim() || "";
   const email = document.getElementById("loginEmail").value.trim();
   const password = document.getElementById("loginPassword").value;
+  const isCreateMode = document.getElementById("authCreateTab")?.classList.contains("active");
 
-  if (!email || !password) {
-    setLoginStatus("Email and password dono fill karo.", "error");
+  if (isCreateMode && !name) {
+    setLoginStatus("Enter your name to create your journal account.", "error");
+    document.getElementById("loginName")?.focus();
     return null;
   }
 
-  return { email, password };
+  if (!email || !password) {
+    setLoginStatus("Enter your email and password.", "error");
+    return null;
+  }
+
+  return { name, email, password };
 }
 
 function getLoginEmail() {
@@ -149,6 +351,62 @@ function toggleLoginPassword() {
   const showing = input.type === "text";
   input.type = showing ? "password" : "text";
   if (btn) btn.textContent = showing ? "Show" : "Hide";
+}
+
+function toggleMobileMenu(forceClose = false) {
+  const menu = document.getElementById("navMenu");
+  const button = document.querySelector(".menu-toggle");
+  if (!menu || !button) return;
+
+  const shouldOpen = forceClose ? false : !menu.classList.contains("active");
+  menu.classList.toggle("active", shouldOpen);
+  button.classList.toggle("active", shouldOpen);
+  button.setAttribute("aria-expanded", String(shouldOpen));
+}
+
+document.addEventListener("click", (event) => {
+  const menu = document.getElementById("navMenu");
+  const button = document.querySelector(".menu-toggle");
+  if (!menu || !button || !menu.classList.contains("active")) return;
+
+  if (!menu.contains(event.target) && !button.contains(event.target)) {
+    toggleMobileMenu(true);
+  }
+});
+
+document.querySelectorAll("#navMenu a").forEach((link) => {
+  link.addEventListener("click", () => toggleMobileMenu(true));
+});
+
+function setAuthMode(mode = "login") {
+  const isCreate = mode === "create";
+  const title = document.getElementById("authTitle");
+  const subtitle = document.getElementById("authSubtitle");
+  const loginTab = document.getElementById("authLoginTab");
+  const createTab = document.getElementById("authCreateTab");
+  const loginBtn = document.getElementById("loginSubmitBtn");
+  const createBtn = document.getElementById("registerSubmitBtn");
+  const password = document.getElementById("loginPassword");
+  const nameInput = document.getElementById("loginName");
+
+  title && (title.textContent = isCreate ? "Create Your Journal" : "Welcome Back");
+  subtitle && (subtitle.textContent = isCreate
+    ? "Start a private RamPath account to save and review every trade."
+    : "Login or create your account to sync your private trading journal.");
+
+  loginTab?.classList.toggle("active", !isCreate);
+  createTab?.classList.toggle("active", isCreate);
+  loginBtn?.classList.toggle("muted-action", isCreate);
+  createBtn?.classList.toggle("primary-create", isCreate);
+
+  if (password) {
+    password.autocomplete = isCreate ? "new-password" : "current-password";
+  }
+
+  if (nameInput) {
+    nameInput.required = isCreate;
+    nameInput.placeholder = isCreate ? "Your name is required" : "Optional: update your display name";
+  }
 }
 
 window.forgotPassword = async function () {
@@ -174,7 +432,10 @@ window.registerUser = async function () {
   try {
     setAuthLoading(true, "Creating...");
     setLoginStatus("Creating your journal account...", "info");
-    await createUserWithEmailAndPassword(auth, credentials.email, credentials.password);
+    const userCredential = await createUserWithEmailAndPassword(auth, credentials.email, credentials.password);
+    await saveUserProfile(userCredential.user, credentials.name);
+    updateAccountBadge(userCredential.user);
+    updateHeroAccountButton(userCredential.user);
     const shouldOpenTradeModal = pendingTradeModalAfterLogin;
     pendingTradeModalAfterLogin = false;
     setLoginStatus("Account created. Your journal is ready.", "success");
@@ -196,9 +457,15 @@ window.loginUser = async function () {
   try {
     setAuthLoading(true, "Logging in...");
     setLoginStatus("Checking account and loading trades...", "info");
-    await signInWithEmailAndPassword(auth, credentials.email, credentials.password);
+    const userCredential = await signInWithEmailAndPassword(auth, credentials.email, credentials.password);
+    await loadUserProfile(userCredential.user);
+    if (credentials.name) {
+      await saveUserProfile(userCredential.user, credentials.name);
+    }
 
 await loadTradesFromFirebase();
+updateAccountBadge(userCredential.user);
+updateHeroAccountButton(userCredential.user);
 
 const shouldOpenTradeModal = pendingTradeModalAfterLogin;
 pendingTradeModalAfterLogin = false;
@@ -220,16 +487,16 @@ onAuthStateChanged(auth, async (user) => {
   if (!loginBtn) return;
 
   if (user) {
+    await loadUserProfile(user);
     loginBtn.textContent = "Logout";
     loginBtn.title = user.email || "Logged in";
-    if (accountBadge) {
-      accountBadge.textContent = user.email || "Logged in";
-      accountBadge.classList.add("active");
-    }
+    updateAccountBadge(user);
+    updateHeroAccountButton(user);
 
     loginBtn.onclick = async () => {
       loginBtn.textContent = "Logging out...";
       pendingTradeModalAfterLogin = false;
+      currentUserProfile = null;
       await signOut(auth);
 
       trades = [];
@@ -246,17 +513,18 @@ onAuthStateChanged(auth, async (user) => {
       loginBtn.textContent = "Login";
       loginBtn.title = "";
       loginBtn.onclick = () => openLoginPopup();
-      if (accountBadge) {
-        accountBadge.textContent = "Guest";
-        accountBadge.classList.remove("active");
-      }
+      updateAccountBadge(null);
+      updateHeroAccountButton(null);
       setLoginStatus("Logged out successfully.", "success");
     };
 
     await loadTradesFromFirebase();
+    updateAccountBadge(user);
+    updateHeroAccountButton(user);
 
   } else {
     trades = [];
+    currentUserProfile = null;
 
     updateDashboard();
     renderTradeHistory();
@@ -271,10 +539,8 @@ onAuthStateChanged(auth, async (user) => {
     loginBtn.textContent = "Login";
     loginBtn.title = "";
     loginBtn.onclick = () => openLoginPopup();
-    if (accountBadge) {
-      accountBadge.textContent = "Guest";
-      accountBadge.classList.remove("active");
-    }
+    updateAccountBadge(null);
+    updateHeroAccountButton(null);
   }
 });
 
@@ -1952,6 +2218,7 @@ editingTradeId = null;
   function openLoginPopup() {
     setLoginStatus("");
     setAuthLoading(false);
+    setAuthMode("login");
     document.getElementById("loginPopup").style.display = "flex";
     setTimeout(() => document.getElementById("loginEmail")?.focus(), 50);
   }
@@ -1964,6 +2231,12 @@ editingTradeId = null;
   document.getElementById("tradeModal")?.addEventListener("click", (event) => {
     if (event.target.id === "tradeModal") {
       closeTradeModal();
+    }
+  });
+
+  document.getElementById("profileModal")?.addEventListener("click", (event) => {
+    if (event.target.id === "profileModal") {
+      closeProfileModal();
     }
   });
   document.getElementById("tradeDetailModal")?.addEventListener("click", (event) => {
@@ -2013,8 +2286,12 @@ window.editTrade = editTrade;
 window.openLoginPopup = openLoginPopup;
 window.closeLoginPopup = closeLoginPopup;
 window.toggleLoginPassword = toggleLoginPassword;
+window.toggleMobileMenu = toggleMobileMenu;
+window.setAuthMode = setAuthMode;
 window.openTradeDetail = openTradeDetail;
 window.closeTradeDetail = closeTradeDetail;
+window.openProfileModal = openProfileModal;
+window.closeProfileModal = closeProfileModal;
 // ================= ADVANCED JOURNAL ANALYTICS =================
 
 function updateAdvancedAnalytics() {

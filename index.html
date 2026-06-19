@@ -8,7 +8,7 @@
   <meta name="description" content="RamPath Journal is a focused trade journal dashboard for tracking trades, P&L, psychology, mistakes, rules, and execution quality.">
   <meta name="author" content="RamPath Journal">
   
-  <link rel="stylesheet" href="style.css?v=20260618-rampath">
+  <link rel="stylesheet" href="style.css?v=20260619-profile">
   <link rel="icon" type="image/png" href="logo.png">
 </head>
 
@@ -17,7 +17,13 @@
  <nav>
   <a href="#home" class="brand-link">RamPath Journal</a>
 
-  <div>
+  <button type="button" class="menu-toggle" onclick="toggleMobileMenu()" aria-label="Toggle navigation" aria-expanded="false">
+    <span></span>
+    <span></span>
+    <span></span>
+  </button>
+
+  <div id="navMenu">
   <a href="#home">Home</a>
   <a href="#journal">Journal</a>
   <a href="#features">Features</a>
@@ -53,7 +59,7 @@ Built for traders who want clear records, clean review, and better discipline.
       Record every trade, review your behavior, spot repeat mistakes, and build a process you can trust.
     </p>
     <a href="#journal" class="btn">Open Journal</a>
-    <a href="javascript:void(0)" class="btn" onclick="openLoginPopup()">Login / Create Account</a>
+    <a href="javascript:void(0)" id="heroAccountBtn" class="btn" onclick="openLoginPopup()">Login / Create Account</a>
   </section>
 
 <section class="journal reveal" id="journal">
@@ -566,12 +572,18 @@ Built for traders who want clear records, clean review, and better discipline.
 
   <h2>Journal Features</h2>
 
+  <div class="feature-grid">
   <div class="card">
     <h3>01. Complete Trade Entry</h3>
     <p>
       Save date, time, symbol, setup, direction, entry, exit, stop loss,
       target, quantity, and screenshots in one place.
     </p>
+    <div class="tech-tags">
+      <span>Trade Log</span>
+      <span>Screenshots</span>
+      <span>Risk Data</span>
+    </div>
   </div>
 
   <div class="card">
@@ -580,6 +592,11 @@ Built for traders who want clear records, clean review, and better discipline.
       P&L, risk-reward, win rate, best trade, worst trade, rule breaks,
       and monthly performance are calculated for faster review.
     </p>
+    <div class="tech-tags">
+      <span>P&L</span>
+      <span>Win Rate</span>
+      <span>R:R</span>
+    </div>
   </div>
 
   <div class="card">
@@ -588,6 +605,11 @@ Built for traders who want clear records, clean review, and better discipline.
       Track mistakes, notes, discipline score, emotions, and repeated weak
       patterns that usually damage consistency.
     </p>
+    <div class="tech-tags">
+      <span>Mistakes</span>
+      <span>Notes</span>
+      <span>Discipline</span>
+    </div>
   </div>
 
     <div class="card">
@@ -596,6 +618,12 @@ Built for traders who want clear records, clean review, and better discipline.
       Use charts, summaries, daily P&L, and journal history to see what is
       improving and what still needs work.
     </p>
+    <div class="tech-tags">
+      <span>Charts</span>
+      <span>Summary</span>
+      <span>Review</span>
+    </div>
+  </div>
   </div>
 </section>
 
@@ -612,6 +640,22 @@ Built for traders who want clear records, clean review, and better discipline.
     <span>Risk Management</span>
     <span>Mistake Tracking</span>
     <span>Trading Psychology</span>
+  </div>
+</section>
+
+<section class="skills-section reveal" id="skills">
+  <p class="section-title">Core Skills</p>
+  <h2>What RamPath Helps You Improve</h2>
+
+  <div class="skill-chips">
+    <span>Trade Planning</span>
+    <span>Execution Review</span>
+    <span>Risk Management</span>
+    <span>Position Sizing</span>
+    <span>Rule Discipline</span>
+    <span>Psychology Notes</span>
+    <span>Mistake Reduction</span>
+    <span>Monthly Review</span>
   </div>
 </section>
 
@@ -673,12 +717,36 @@ Built for traders who want clear records, clean review, and better discipline.
 </section>
 <div class="login-popup" id="loginPopup">
   <div class="login-box">
-    <span class="close-login" onclick="closeLoginPopup()">Ã—</span>
+    <span class="close-login" onclick="closeLoginPopup()">&times;</span>
 
     <div class="login-head">
-      <h2>Welcome Back</h2>
-      <p>Login to sync your private trading journal.</p>
+      <span class="auth-kicker">RamPath Account</span>
+      <h2 id="authTitle">Welcome Back</h2>
+      <p id="authSubtitle">Login or create your account to sync your private trading journal.</p>
     </div>
+
+    <div class="auth-benefits">
+      <div>
+        <strong>Private Journal</strong>
+        <span>Your trades stay linked to your account.</span>
+      </div>
+      <div>
+        <strong>Cloud Sync</strong>
+        <span>Access your journal after login.</span>
+      </div>
+      <div>
+        <strong>Fast Review</strong>
+        <span>Build history, analytics, and discipline.</span>
+      </div>
+    </div>
+
+    <div class="auth-tabs" role="tablist" aria-label="Account action">
+      <button id="authLoginTab" type="button" class="active" onclick="setAuthMode('login')">Login</button>
+      <button id="authCreateTab" type="button" onclick="setAuthMode('create')">Create Account</button>
+    </div>
+
+    <label for="loginName" class="field-label">Name</label>
+    <input id="loginName" type="text" placeholder="Your trading name" autocomplete="name">
 
     <label for="loginEmail" class="field-label">Email</label>
     <input id="loginEmail" type="email" placeholder="your@email.com" autocomplete="email">
@@ -688,6 +756,7 @@ Built for traders who want clear records, clean review, and better discipline.
       <input id="loginPassword" type="password" placeholder="Password" autocomplete="current-password">
       <button type="button" onclick="toggleLoginPassword()">Show</button>
     </div>
+    <p class="password-helper">Use at least 6 characters for a new account.</p>
 
     <button id="forgotPasswordBtn" type="button" class="forgot-password-btn" onclick="forgotPassword()">
       Forgot password?
@@ -699,15 +768,27 @@ Built for traders who want clear records, clean review, and better discipline.
       <button id="loginSubmitBtn" onclick="loginUser()">Login</button>
       <button id="registerSubmitBtn" onclick="registerUser()" class="secondary-login-btn">Create Account</button>
     </div>
+    <p class="auth-note">No demo password. Your Firebase account controls access to your saved trades.</p>
   </div>
 </div>
 <div class="trade-detail-modal" id="tradeDetailModal">
   <div class="trade-detail-box">
-    <button type="button" class="modal-close detail-close" onclick="closeTradeDetail()">Ã—</button>
+    <button type="button" class="modal-close detail-close" onclick="closeTradeDetail()">&times;</button>
     <div id="tradeDetailContent"></div>
   </div>
 </div>
+<div class="profile-modal" id="profileModal">
+  <div class="profile-box">
+    <button type="button" class="modal-close profile-close" onclick="closeProfileModal()">&times;</button>
+    <div id="profileContent"></div>
+  </div>
+</div>
 <footer>
+  <div class="footer-links">
+    <a href="#journal">Journal</a>
+    <a href="#features">Features</a>
+    <a href="#contact">Contact</a>
+  </div>
   &copy; <span id="year"></span> RamPath Journal
   <br><br>
   <small>
@@ -715,9 +796,13 @@ Built for traders who want clear records, clean review, and better discipline.
   </small>
 </footer>
 
-<script type="module" src="script.js?v=20260618-forgot-en"></script>
+<script type="module" src="script.js?v=20260619-hero-profile"></script>
 </body>
 </html>
+
+
+
+
 
 
 

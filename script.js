@@ -38,6 +38,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+const INR = "\u20B9";
 
 // Global access
 window.auth = auth;
@@ -60,6 +61,7 @@ window.setDoc = setDoc;
 
 console.log("Firebase Connected Successfully");
 let currentUserProfile = null;
+let blogPosts = [];
 async function loadTradesFromFirebase() {
     try {
         const user = auth.currentUser;
@@ -91,6 +93,7 @@ async function loadTradesFromFirebase() {
     updatePsychologyVerdict();
     updateMonthlyDashboard();
     updateAccountBadge(user);
+    updateMonthlyTargetWidget();
 
 console.log("Trades loaded:", trades.length);
 
@@ -115,8 +118,76 @@ function getNameFromEmail(email = "") {
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
+function escapeHtml(value = "") {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function csvToArray(value = "") {
+  if (Array.isArray(value)) return value.map((item) => String(item).trim()).filter(Boolean);
+  return String(value)
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function profileValue(key, fallback = "") {
+  return currentUserProfile?.[key] || fallback;
+}
+
+function numberFromCurrency(value) {
+  return Number(String(value || "").replace(/[^\d.-]/g, "")) || 0;
+}
+
+function getProfileCacheKey(user) {
+  return user?.uid ? `rampathProfile:${user.uid}` : "";
+}
+
+function getCachedUserProfile(user) {
+  const cacheKey = getProfileCacheKey(user);
+  if (!cacheKey) return {};
+
+  try {
+    return JSON.parse(localStorage.getItem(cacheKey) || "{}") || {};
+  } catch (error) {
+    console.warn("Profile cache read error:", error);
+    return {};
+  }
+}
+
+function cacheUserProfile(user, profile = {}) {
+  const cacheKey = getProfileCacheKey(user);
+  if (!cacheKey) return {};
+
+  const safeProfile = {
+    ...getCachedUserProfile(user),
+    ...profile
+  };
+
+  delete safeProfile.createdAt;
+  delete safeProfile.updatedAt;
+
+  try {
+    localStorage.setItem(cacheKey, JSON.stringify(safeProfile));
+  } catch (error) {
+    console.warn("Profile cache save error:", error);
+  }
+
+  return safeProfile;
+}
+
+function selected(value, expected) {
+  return value === expected ? "selected" : "";
+}
+
 async function loadUserProfile(user) {
   if (!user) return null;
+
+  const cachedProfile = getCachedUserProfile(user);
 
   try {
     const profileRef = doc(db, "users", user.uid);
@@ -124,51 +195,66 @@ async function loadUserProfile(user) {
     const fallbackName = getNameFromEmail(user.email || "");
     const profile = profileSnap.exists()
       ? profileSnap.data()
-      : { name: fallbackName, email: user.email };
-
-    currentUserProfile = {
-      name: profile.name || fallbackName,
-      email: profile.email || user.email || "",
-      createdAt: profile.createdAt || null
+      : {};
+    const mergedProfile = {
+      ...cachedProfile,
+      ...profile
     };
 
+    currentUserProfile = {
+      ...mergedProfile,
+      name: mergedProfile.name || fallbackName,
+      displayName: mergedProfile.displayName || mergedProfile.name || fallbackName,
+      email: mergedProfile.email || user.email || "",
+      createdAt: mergedProfile.createdAt || null
+    };
+
+    cacheUserProfile(user, currentUserProfile);
+
     if (!profileSnap.exists()) {
-      await setDoc(profileRef, {
-        name: currentUserProfile.name,
-        email: currentUserProfile.email,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      }, { merge: true });
+      try {
+        await setDoc(profileRef, {
+          ...currentUserProfile,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        }, { merge: true });
+      } catch (saveError) {
+        console.error("Initial profile save error:", saveError);
+      }
     }
 
     return currentUserProfile;
   } catch (error) {
     console.error("Profile load error:", error);
     currentUserProfile = {
-      name: getNameFromEmail(user.email || ""),
-      email: user.email || ""
+      ...cachedProfile,
+      name: cachedProfile.name || getNameFromEmail(user.email || ""),
+      displayName: cachedProfile.displayName || cachedProfile.name || getNameFromEmail(user.email || ""),
+      email: cachedProfile.email || user.email || ""
     };
     return currentUserProfile;
   }
 }
 
-async function saveUserProfile(user, name) {
-  if (!user || !name) return null;
+async function saveUserProfileData(user, profileData = {}) {
+  if (!user) return null;
 
-  const cleanName = name.trim();
-  if (!cleanName) return null;
-
+  const cleanName = (profileData.name || profileData.displayName || "").trim();
   const profile = {
-    name: cleanName,
-    email: user.email || "",
+    ...profileData,
+    name: cleanName || getNameFromEmail(user.email || ""),
+    displayName: (profileData.displayName || cleanName || getNameFromEmail(user.email || "")).trim(),
+    email: (profileData.email || user.email || "").trim(),
+    authEmail: user.email || "",
     updatedAt: serverTimestamp()
   };
 
   currentUserProfile = {
     ...(currentUserProfile || {}),
-    name: cleanName,
-    email: user.email || ""
+    ...profile
   };
+
+  cacheUserProfile(user, currentUserProfile);
 
   try {
     await setDoc(doc(db, "users", user.uid), profile, { merge: true });
@@ -177,6 +263,11 @@ async function saveUserProfile(user, name) {
   }
 
   return currentUserProfile;
+}
+
+async function saveUserProfile(user, name) {
+  if (!user || !name) return null;
+  return saveUserProfileData(user, { name, displayName: name, email: user.email || "" });
 }
 
 function getTraderBadge() {
@@ -196,7 +287,11 @@ function getTraderBadge() {
     (trades.filter((trade) => trade.rules === true || trade.rules === "Yes" || trade.rules === "Followed").length / totalTrades) * 100;
   const cleanRate =
     (trades.filter((trade) => !trade.mistake || trade.mistake === "No Mistake").length / totalTrades) * 100;
-  const psychologyScore = Math.round((avgDiscipline / 5) * 55 + ruleRate * 0.3 + cleanRate * 0.15);
+  const disciplineBase = avgDiscipline > 5 ? 25 : 5;
+  const psychologyScore = Math.max(
+    0,
+    Math.min(100, Math.round((avgDiscipline / disciplineBase) * 55 + ruleRate * 0.3 + cleanRate * 0.15))
+  );
 
   if (psychologyScore >= 85) {
     return { title: "Elite Discipline Trader", level: "Elite", score: psychologyScore, detail: "Strong psychology, rule control, and clean execution." };
@@ -212,26 +307,85 @@ function getTraderBadge() {
 
 function updateAccountBadge(user) {
   const accountBadge = document.getElementById("accountBadge");
-  if (!accountBadge) return;
 
   if (!user) {
-    accountBadge.textContent = "Guest";
-    accountBadge.title = "Login to view profile";
-    accountBadge.classList.remove("active");
-    accountBadge.onclick = null;
+    if (accountBadge) {
+      accountBadge.textContent = "Guest";
+      accountBadge.title = "Login to view profile";
+      accountBadge.classList.remove("active");
+      accountBadge.onclick = null;
+    }
+    updateProfileMenu(null);
     return;
   }
 
   const displayName = currentUserProfile?.name || getNameFromEmail(user.email || "");
   const badge = getTraderBadge();
-  accountBadge.textContent = displayName;
-  accountBadge.title = `${badge.title} - click to view profile`;
-  accountBadge.classList.add("active");
-  accountBadge.onclick = openProfileModal;
+  if (accountBadge) {
+    accountBadge.textContent = displayName;
+    accountBadge.title = `${badge.title} - click to view profile`;
+    accountBadge.classList.add("active");
+    accountBadge.onclick = openProfileModal;
+  }
+  updateProfileMenu(user);
+}
+
+function updateProfileMenu(user) {
+  const avatar = document.getElementById("appProfileAvatar");
+  const name = document.getElementById("profileMenuName");
+  const email = document.getElementById("profileMenuEmail");
+  const displayName = user
+    ? currentUserProfile?.displayName || currentUserProfile?.name || getNameFromEmail(user.email || "")
+    : "Guest";
+
+  if (avatar) avatar.textContent = displayName.slice(0, 1).toUpperCase();
+  if (name) name.textContent = displayName;
+  if (email) email.textContent = user?.email || "Login required";
+}
+
+function toggleProfileMenu(forceOpen) {
+  const menu = document.getElementById("profileMenu");
+  if (!menu) return;
+  const shouldOpen = typeof forceOpen === "boolean" ? forceOpen : !menu.classList.contains("active");
+  menu.classList.toggle("active", shouldOpen);
+}
+
+function toggleCustomizePanel(forceOpen) {
+  const panel = document.getElementById("customizePanel");
+  if (!panel) return;
+  const shouldOpen = typeof forceOpen === "boolean" ? forceOpen : !panel.classList.contains("active");
+  panel.classList.toggle("active", shouldOpen);
+}
+
+function applyDashboardLayout() {
+  const layout = localStorage.getItem("rampathDashboardLayout") || "default";
+  document.body.classList.remove("layout-compact", "layout-wide-calendar");
+  if (layout === "compact") document.body.classList.add("layout-compact");
+  if (layout === "wide-calendar") document.body.classList.add("layout-wide-calendar");
+}
+
+function setDashboardLayout(layout = "default") {
+  localStorage.setItem("rampathDashboardLayout", layout);
+  applyDashboardLayout();
+  toggleCustomizePanel(false);
 }
 
 function updateHeroAccountButton(user) {
   const button = document.getElementById("heroAccountBtn");
+  const openButton = document.getElementById("heroOpenJournalBtn");
+
+  if (openButton) {
+    if (user) {
+      openButton.textContent = "Open Dashboard";
+      openButton.onclick = () => openJournalGate("dashboard");
+      openButton.setAttribute("aria-label", "Open your journal dashboard");
+    } else {
+      openButton.textContent = "Open Journal";
+      openButton.onclick = () => openJournalGate("dashboard");
+      openButton.setAttribute("aria-label", "Preview the journal dashboard");
+    }
+  }
+
   if (!button) return;
 
   if (user) {
@@ -245,16 +399,302 @@ function updateHeroAccountButton(user) {
   }
 }
 
-function openProfileModal() {
+function updateFloatingAuthButton(user = auth.currentUser) {
+  const button = document.getElementById("floatingAuthBtn");
+  if (!button) return;
+
+  const shouldShow = !user && window.scrollY > 260;
+  button.classList.toggle("visible", shouldShow);
+}
+
+function openJournalGate(target = "dashboard") {
   const user = auth.currentUser;
-  const modal = document.getElementById("profileModal");
-  const content = document.getElementById("profileContent");
-  if (!modal || !content) return;
+
+  if (!user) {
+    if (target === "dashboard" || target === "trades" || target === "analytics") {
+      document.getElementById("guestPreview")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+
+    openLoginPopup();
+
+    if (target === "start") {
+      setAuthMode("create");
+      setLoginStatus("Create your account to unlock the full journal dashboard.", "info");
+      return;
+    }
+
+    setLoginStatus("Login or create account to unlock this journal section.", "info");
+    return;
+  }
+
+  const targetMap = {
+    start: "journal",
+    dashboard: "journal",
+    trades: "tradeHistory",
+    analytics: "advancedAnalyticsWidget"
+  };
+
+  const sectionId = targetMap[target] || "journal";
+  document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function setAppMode(user) {
+  document.body.classList.toggle("app-mode", Boolean(user));
+  updateFloatingAuthButton(user);
+  if (user && location.hash === "#home") {
+    history.replaceState(null, "", "#journal");
+  }
+}
+
+async function logoutCurrentUser() {
+  const loginBtn = document.querySelector(".login-link");
+  if (loginBtn) loginBtn.textContent = "Logging out...";
+
+  pendingTradeModalAfterLogin = false;
+  currentUserProfile = null;
+  await signOut(auth);
+
+  trades = [];
+  updateDashboard();
+  renderTradeHistory();
+  updateBestTradeShowcase();
+  updateTradeReplay(null);
+  updateEquityCurve();
+  updateCalendarHeatmap();
+  updateDailyPnlChart();
+  updatePeriodSummary();
+  updatePsychologyVerdict();
+
+  if (loginBtn) {
+    loginBtn.textContent = "Login";
+    loginBtn.title = "";
+    loginBtn.onclick = () => openLoginPopup();
+  }
+
+  updateAccountBadge(null);
+  updateHeroAccountButton(null);
+  updateMonthlyTargetWidget();
+  setAppMode(null);
+  setLoginStatus("Logged out successfully.", "success");
+}
+
+function getCurrentMonthPnl() {
+  const now = new Date();
+  const month = now.getMonth();
+  const year = now.getFullYear();
+
+  return trades.reduce((sum, trade) => {
+    const rawDate = trade.date || trade.tradeDate || trade.createdAt?.toDate?.();
+    const tradeDate = rawDate instanceof Date ? rawDate : new Date(rawDate);
+    if (Number.isNaN(tradeDate.getTime())) return sum;
+    if (tradeDate.getMonth() !== month || tradeDate.getFullYear() !== year) return sum;
+    return sum + getTradePnl(trade);
+  }, 0);
+}
+
+function updateMonthlyTargetWidget() {
+  const widget = document.getElementById("monthlyTargetWidget");
+  if (!widget) return;
+
+  const title = document.getElementById("monthlyTargetTitle");
+  const meta = document.getElementById("monthlyTargetMeta");
+  const bar = document.getElementById("monthlyTargetBar");
+  const inputBox = document.getElementById("monthlyTargetInputBox");
+  const quickInput = document.getElementById("quickMonthlyTarget");
+  const user = auth.currentUser;
+  const target = numberFromCurrency(currentUserProfile?.monthlyProfitTarget);
+  const monthPnl = getCurrentMonthPnl();
+
+  widget.classList.toggle("target-missing", !target);
+  widget.classList.toggle("target-complete", target > 0 && monthPnl >= target);
+
+  if (!user) {
+    title.textContent = "Login to set monthly target";
+    meta.textContent = "Your monthly target is saved inside your profile.";
+    inputBox.style.display = "none";
+    bar.style.width = "0%";
+    return;
+  }
+
+  if (!target) {
+    title.textContent = "Set your monthly profit target";
+    meta.textContent = "Target missing. Add it here or from Edit Profile.";
+    inputBox.style.display = "grid";
+    if (quickInput) quickInput.value = "";
+    bar.style.width = "0%";
+    return;
+  }
+
+  const progress = Math.max(0, Math.min(100, Math.round((monthPnl / target) * 100)));
+  title.textContent = `${progress}% completed`;
+  meta.textContent = `${money(monthPnl)} achieved out of ${money(target)} this month`;
+  inputBox.style.display = "none";
+  bar.style.width = `${progress}%`;
+}
+
+async function saveQuickMonthlyTarget() {
+  const user = auth.currentUser;
+  const input = document.getElementById("quickMonthlyTarget");
+  if (!user) {
+    openLoginPopup();
+    setLoginStatus("Login first to save your monthly target.", "info");
+    return;
+  }
+
+  const target = numberFromCurrency(input?.value);
+  if (!target || target <= 0) {
+    input?.focus();
+    return;
+  }
+
+  await saveUserProfileData(user, {
+    ...(currentUserProfile || {}),
+    monthlyProfitTarget: String(target)
+  });
+  updateMonthlyTargetWidget();
+  updateAccountBadge(user);
+}
+
+function setBlogStatus(message = "", type = "") {
+  const status = document.getElementById("blogStatus");
+  if (!status) return;
+
+  status.textContent = message;
+  status.className = type;
+}
+
+function formatBlogDate(value) {
+  const rawDate = value?.toDate?.() || value;
+  const date = rawDate instanceof Date ? rawDate : new Date(rawDate);
+  if (Number.isNaN(date.getTime())) return "Draft";
+  return date.toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric"
+  });
+}
+
+function renderBlogPosts() {
+  const list = document.getElementById("blogList");
+  if (!list) return;
+
+  if (!auth.currentUser) {
+    list.innerHTML = `<p class="empty-text">Login to save blog posts.</p>`;
+    return;
+  }
+
+  if (!blogPosts.length) {
+    list.innerHTML = `<p class="empty-text">No blog posts yet.</p>`;
+    return;
+  }
+
+  list.innerHTML = blogPosts.map((post) => {
+    const content = escapeHtml(post.content || "").replace(/\n/g, "<br>");
+    return `
+      <article class="blog-post">
+        <div>
+          <span>${escapeHtml(post.category || "General")}</span>
+          <small>${formatBlogDate(post.createdAt)}</small>
+        </div>
+        <h4>${escapeHtml(post.title || "Untitled")}</h4>
+        ${post.source ? `<em>${escapeHtml(post.source)}</em>` : ""}
+        <p>${content}</p>
+        <button type="button" onclick="deleteBlogPost('${post.id}')">Delete</button>
+      </article>
+    `;
+  }).join("");
+}
+
+async function loadBlogPostsFromFirebase() {
+  const user = auth.currentUser;
+  if (!user) {
+    blogPosts = [];
+    renderBlogPosts();
+    return;
+  }
+
+  try {
+    const blogsRef = collection(db, "users", user.uid, "blogs");
+    const q = query(blogsRef, orderBy("createdAt", "desc"));
+    const snapshot = await getDocs(q);
+
+    blogPosts = [];
+    snapshot.forEach((postDoc) => {
+      blogPosts.push({
+        id: postDoc.id,
+        ...postDoc.data()
+      });
+    });
+
+    renderBlogPosts();
+  } catch (error) {
+    console.error("Blog load error:", error);
+    setBlogStatus("Could not load blog posts.", "error");
+  }
+}
+
+async function saveBlogPost(event) {
+  event.preventDefault();
+  const user = auth.currentUser;
 
   if (!user) {
     openLoginPopup();
+    setBlogStatus("Login first to save blog posts.", "error");
     return;
   }
+
+  const title = document.getElementById("blogTitle")?.value.trim();
+  const category = document.getElementById("blogCategory")?.value || "General";
+  const source = document.getElementById("blogSource")?.value.trim();
+  const content = document.getElementById("blogContent")?.value.trim();
+
+  if (!title || !content) {
+    setBlogStatus("Title and content are required.", "error");
+    return;
+  }
+
+  try {
+    setBlogStatus("Saving...", "info");
+    await addDoc(collection(db, "users", user.uid, "blogs"), {
+      title,
+      category,
+      source,
+      content,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    });
+    clearBlogForm();
+    setBlogStatus("Blog saved.", "success");
+    await loadBlogPostsFromFirebase();
+  } catch (error) {
+    console.error("Blog save error:", error);
+    setBlogStatus("Could not save blog post.", "error");
+  }
+}
+
+async function deleteBlogPost(postId) {
+  const user = auth.currentUser;
+  if (!user || !postId) return;
+
+  try {
+    await deleteDoc(doc(db, "users", user.uid, "blogs", postId));
+    setBlogStatus("Blog deleted.", "success");
+    await loadBlogPostsFromFirebase();
+  } catch (error) {
+    console.error("Blog delete error:", error);
+    setBlogStatus("Could not delete blog post.", "error");
+  }
+}
+
+function clearBlogForm() {
+  document.getElementById("blogForm")?.reset();
+}
+
+function renderProfileView() {
+  const user = auth.currentUser;
+  const content = document.getElementById("profileContent");
+  if (!user || !content) return;
 
   const profile = currentUserProfile || {
     name: getNameFromEmail(user.email || ""),
@@ -264,15 +704,27 @@ function openProfileModal() {
   const pnl = trades.reduce((sum, trade) => sum + getTradePnl(trade), 0);
   const winners = trades.filter((trade) => getTradePnl(trade) > 0).length;
   const winRate = trades.length ? Math.round((winners / trades.length) * 100) : 0;
+  const avatar = profile.photoUrl
+    ? `<img src="${escapeHtml(profile.photoUrl)}" alt="${escapeHtml(profile.displayName || profile.name || "Trader")}">`
+    : escapeHtml((profile.displayName || profile.name || "T").slice(0, 1).toUpperCase());
+  const profileChips = [
+    profile.experience,
+    profile.tradingStyle,
+    profile.preferredTimeframe,
+    profile.country
+  ].filter(Boolean);
 
   content.innerHTML = `
     <div class="profile-head">
-      <div class="profile-avatar">${(profile.name || "T").slice(0, 1).toUpperCase()}</div>
+      <div class="profile-avatar">${avatar}</div>
       <div>
         <span>Trader Profile</span>
-        <h2>${profile.name || "Trader"}</h2>
-        <p>${profile.email || user.email || ""}</p>
+        <h2>${escapeHtml(profile.displayName || profile.name || "Trader")}</h2>
+        <p>${escapeHtml(profile.email || user.email || "")}${profile.mobile ? ` | ${escapeHtml(profile.mobile)}` : ""}</p>
       </div>
+    </div>
+    <div class="profile-actions">
+      <button type="button" onclick="renderProfileEdit()">Edit Profile</button>
     </div>
     <div class="trader-badge-card">
       <span>${badge.level} Badge</span>
@@ -286,8 +738,182 @@ function openProfileModal() {
       <div><span>Win Rate</span><strong>${winRate}%</strong></div>
       <div><span>Total P&L</span><strong>${money(pnl)}</strong></div>
     </div>
+    ${profile.bio ? `<p class="profile-bio">${escapeHtml(profile.bio)}</p>` : ""}
+    ${profileChips.length ? `<div class="profile-chip-row">${profileChips.map((item) => `<span>${escapeHtml(item)}</span>`).join("")}</div>` : ""}
+    <div class="profile-detail-grid">
+      <div><span>Markets</span><strong>${escapeHtml(csvToArray(profile.markets).join(", ") || "Not set")}</strong></div>
+      <div><span>Strategy</span><strong>${escapeHtml(profile.mainStrategy || "Not set")}</strong></div>
+      <div><span>Monthly Target</span><strong>${escapeHtml(profile.monthlyProfitTarget || "Not set")}</strong></div>
+      <div><span>Risk / Trade</span><strong>${escapeHtml(profile.riskPerTrade || "Not set")}</strong></div>
+    </div>
     <p class="profile-note">Badge is calculated from your journal discipline score, rules followed, and mistake tracking.</p>
   `;
+}
+
+function options(items, currentValue = "") {
+  return items.map((item) => `<option value="${escapeHtml(item)}" ${selected(currentValue, item)}>${escapeHtml(item)}</option>`).join("");
+}
+
+function multiOptions(items, selectedItems = []) {
+  const values = Array.isArray(selectedItems) ? selectedItems : csvToArray(selectedItems);
+  return items.map((item) => `<option value="${escapeHtml(item)}" ${values.includes(item) ? "selected" : ""}>${escapeHtml(item)}</option>`).join("");
+}
+
+function renderProfileEdit() {
+  const user = auth.currentUser;
+  const content = document.getElementById("profileContent");
+  if (!user || !content) return;
+
+  const p = currentUserProfile || {};
+  content.innerHTML = `
+    <div class="profile-edit-head">
+      <div>
+        <span>Profile Settings</span>
+        <h2>Edit Trader Profile</h2>
+        <p>Fill what matters. You can update this anytime.</p>
+      </div>
+      <button type="button" onclick="renderProfileView()">View Profile</button>
+    </div>
+
+    <form id="profileEditForm" class="profile-edit-form" onsubmit="saveProfileDetails(event)">
+      <section>
+        <h3>Basic Info</h3>
+        <div class="profile-form-grid">
+          <label>Display Name / Nickname<input name="displayName" value="${escapeHtml(p.displayName || p.name || "")}" required></label>
+          <label>Email<input name="email" type="email" value="${escapeHtml(p.email || user.email || "")}"></label>
+          <label>Mobile No.<input name="mobile" value="${escapeHtml(p.mobile || "")}"></label>
+          <label>Country<input name="country" value="${escapeHtml(p.country || "")}"></label>
+          <label>Time Zone<input name="timeZone" value="${escapeHtml(p.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone || "")}"></label>
+          <label>Profile Photo URL<input name="photoUrl" value="${escapeHtml(p.photoUrl || "")}" placeholder="https://..."></label>
+        </div>
+        <label>Bio<textarea name="bio" rows="3" placeholder="2-3 lines about your trading journey">${escapeHtml(p.bio || "")}</textarea></label>
+      </section>
+
+      <section>
+        <h3>Trading Background</h3>
+        <div class="profile-form-grid">
+          <label>Trading Experience<select name="experience">${options(["Beginner", "Intermediate", "Advanced"], p.experience)}</select></label>
+          <label>Market<select name="markets" multiple>${multiOptions(["Stocks", "Options", "Futures", "Forex", "Crypto", "Commodities"], p.markets)}</select></label>
+          <label>Trading Style<select name="tradingStyle">${options(["Scalping", "Intraday", "Swing", "Positional"], p.tradingStyle)}</select></label>
+          <label>Preferred Timeframe<input name="preferredTimeframe" value="${escapeHtml(p.preferredTimeframe || "")}" placeholder="1m, 5m, 15m, 1h, Daily"></label>
+        </div>
+      </section>
+
+      <section>
+        <h3>Trading Goals</h3>
+        <div class="profile-form-grid">
+          <label>Monthly Profit Target<input name="monthlyProfitTarget" value="${escapeHtml(p.monthlyProfitTarget || "")}"></label>
+          <label>Risk Per Trade (%)<input name="riskPerTrade" value="${escapeHtml(p.riskPerTrade || "")}"></label>
+          <label>Maximum Daily Loss Limit<input name="maxDailyLoss" value="${escapeHtml(p.maxDailyLoss || "")}"></label>
+          <label>Annual Goal<input name="annualGoal" value="${escapeHtml(p.annualGoal || "")}"></label>
+          <label>Current Account Size<input name="accountSize" value="${escapeHtml(p.accountSize || "")}"></label>
+        </div>
+      </section>
+
+      <section>
+        <h3>Strategy Information</h3>
+        <div class="profile-form-grid">
+          <label>Main Strategy Name<input name="mainStrategy" value="${escapeHtml(p.mainStrategy || "")}"></label>
+          <label>Setup Tags<input name="setupTags" value="${escapeHtml(csvToArray(p.setupTags).join(", "))}" placeholder="Breakout, Reversal"></label>
+          <label>Favorite Indicators<input name="favoriteIndicators" value="${escapeHtml(csvToArray(p.favoriteIndicators).join(", "))}" placeholder="VWAP, EMA, RSI"></label>
+          <label>Watchlist Symbols<input name="watchlistSymbols" value="${escapeHtml(csvToArray(p.watchlistSymbols).join(", "))}" placeholder="NIFTY, BANKNIFTY, SBIN"></label>
+        </div>
+      </section>
+
+      <section>
+        <h3>Psychology & Habits</h3>
+        <div class="profile-form-grid">
+          <label>Biggest Strength<input name="biggestStrength" value="${escapeHtml(p.biggestStrength || "")}"></label>
+          <label>Biggest Weakness<input name="biggestWeakness" value="${escapeHtml(p.biggestWeakness || "")}"></label>
+        </div>
+        <label>Common Trading Mistakes<textarea name="commonMistakes" rows="3" placeholder="Overtrading, FOMO, revenge trading">${escapeHtml(csvToArray(p.commonMistakes).join(", "))}</textarea></label>
+        <label>Trading Rules<textarea name="tradingRules" rows="4" placeholder="Write your personal trading rules">${escapeHtml(p.tradingRules || "")}</textarea></label>
+      </section>
+
+      <div class="profile-form-actions">
+        <button type="button" onclick="renderProfileView()">Cancel</button>
+        <button type="submit" id="saveProfileBtn">Save Profile</button>
+      </div>
+      <p id="profileSaveStatus" class="profile-save-status"></p>
+    </form>
+  `;
+}
+
+async function saveProfileDetails(event) {
+  event.preventDefault();
+  const user = auth.currentUser;
+  const form = document.getElementById("profileEditForm");
+  const status = document.getElementById("profileSaveStatus");
+  const button = document.getElementById("saveProfileBtn");
+  if (!user || !form) return;
+
+  const data = new FormData(form);
+  const profileData = {
+    name: data.get("displayName")?.trim(),
+    displayName: data.get("displayName")?.trim(),
+    email: data.get("email")?.trim(),
+    mobile: data.get("mobile")?.trim(),
+    country: data.get("country")?.trim(),
+    timeZone: data.get("timeZone")?.trim(),
+    photoUrl: data.get("photoUrl")?.trim(),
+    bio: data.get("bio")?.trim(),
+    experience: data.get("experience"),
+    markets: data.getAll("markets"),
+    tradingStyle: data.get("tradingStyle"),
+    preferredTimeframe: data.get("preferredTimeframe")?.trim(),
+    monthlyProfitTarget: data.get("monthlyProfitTarget")?.trim(),
+    riskPerTrade: data.get("riskPerTrade")?.trim(),
+    maxDailyLoss: data.get("maxDailyLoss")?.trim(),
+    annualGoal: data.get("annualGoal")?.trim(),
+    accountSize: data.get("accountSize")?.trim(),
+    mainStrategy: data.get("mainStrategy")?.trim(),
+    setupTags: csvToArray(data.get("setupTags")),
+    favoriteIndicators: csvToArray(data.get("favoriteIndicators")),
+    watchlistSymbols: csvToArray(data.get("watchlistSymbols")),
+    biggestStrength: data.get("biggestStrength")?.trim(),
+    biggestWeakness: data.get("biggestWeakness")?.trim(),
+    commonMistakes: csvToArray(data.get("commonMistakes")),
+    tradingRules: data.get("tradingRules")?.trim()
+  };
+
+  if (!profileData.displayName) {
+    status.textContent = "Display name is required.";
+    status.className = "profile-save-status error";
+    return;
+  }
+
+  try {
+    if (button) {
+      button.disabled = true;
+      button.textContent = "Saving...";
+    }
+    await saveUserProfileData(user, profileData);
+    updateAccountBadge(user);
+    updateHeroAccountButton(user);
+    updateMonthlyTargetWidget();
+    renderProfileView();
+  } catch (error) {
+    status.textContent = error.message || "Could not save profile.";
+    status.className = "profile-save-status error";
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.textContent = "Save Profile";
+    }
+  }
+}
+
+function openProfileModal() {
+  const user = auth.currentUser;
+  const modal = document.getElementById("profileModal");
+  if (!modal) return;
+
+  if (!user) {
+    openLoginPopup();
+    return;
+  }
+
+  renderProfileView();
 
   modal.style.display = "flex";
 }
@@ -378,6 +1004,31 @@ document.querySelectorAll("#navMenu a").forEach((link) => {
   link.addEventListener("click", () => toggleMobileMenu(true));
 });
 
+document.addEventListener("click", (event) => {
+  const profileMenu = document.getElementById("profileMenu");
+  const profilePill = document.querySelector(".profile-pill");
+  const customizePanel = document.getElementById("customizePanel");
+  const customizeBtn = document.querySelector(".customize-btn");
+
+  if (
+    profileMenu?.classList.contains("active") &&
+    !profileMenu.contains(event.target) &&
+    !profilePill?.contains(event.target)
+  ) {
+    toggleProfileMenu(false);
+  }
+
+  if (
+    customizePanel?.classList.contains("active") &&
+    !customizePanel.contains(event.target) &&
+    !customizeBtn?.contains(event.target)
+  ) {
+    toggleCustomizePanel(false);
+  }
+});
+
+applyDashboardLayout();
+
 function setAuthMode(mode = "login") {
   const isCreate = mode === "create";
   const title = document.getElementById("authTitle");
@@ -434,8 +1085,11 @@ window.registerUser = async function () {
     setLoginStatus("Creating your journal account...", "info");
     const userCredential = await createUserWithEmailAndPassword(auth, credentials.email, credentials.password);
     await saveUserProfile(userCredential.user, credentials.name);
+    setAppMode(userCredential.user);
     updateAccountBadge(userCredential.user);
     updateHeroAccountButton(userCredential.user);
+    updateMonthlyTargetWidget();
+    await loadBlogPostsFromFirebase();
     const shouldOpenTradeModal = pendingTradeModalAfterLogin;
     pendingTradeModalAfterLogin = false;
     setLoginStatus("Account created. Your journal is ready.", "success");
@@ -464,8 +1118,11 @@ window.loginUser = async function () {
     }
 
 await loadTradesFromFirebase();
+await loadBlogPostsFromFirebase();
 updateAccountBadge(userCredential.user);
 updateHeroAccountButton(userCredential.user);
+updateMonthlyTargetWidget();
+setAppMode(userCredential.user);
 
 const shouldOpenTradeModal = pendingTradeModalAfterLogin;
 pendingTradeModalAfterLogin = false;
@@ -488,43 +1145,28 @@ onAuthStateChanged(auth, async (user) => {
 
   if (user) {
     await loadUserProfile(user);
+    setAppMode(user);
     loginBtn.textContent = "Logout";
     loginBtn.title = user.email || "Logged in";
     updateAccountBadge(user);
     updateHeroAccountButton(user);
+    updateMonthlyTargetWidget();
+    updateFloatingAuthButton(user);
 
-    loginBtn.onclick = async () => {
-      loginBtn.textContent = "Logging out...";
-      pendingTradeModalAfterLogin = false;
-      currentUserProfile = null;
-      await signOut(auth);
-
-      trades = [];
-      updateDashboard();
-      renderTradeHistory();
-      updateBestTradeShowcase();
-      updateTradeReplay(null);
-      updateEquityCurve();
-      updateCalendarHeatmap();
-      updateDailyPnlChart();
-      updatePeriodSummary();
-      updatePsychologyVerdict();
-
-      loginBtn.textContent = "Login";
-      loginBtn.title = "";
-      loginBtn.onclick = () => openLoginPopup();
-      updateAccountBadge(null);
-      updateHeroAccountButton(null);
-      setLoginStatus("Logged out successfully.", "success");
-    };
+    loginBtn.onclick = logoutCurrentUser;
 
     await loadTradesFromFirebase();
+    await loadBlogPostsFromFirebase();
     updateAccountBadge(user);
     updateHeroAccountButton(user);
+    updateMonthlyTargetWidget();
+    updateFloatingAuthButton(user);
 
   } else {
     trades = [];
+    blogPosts = [];
     currentUserProfile = null;
+    setAppMode(null);
 
     updateDashboard();
     renderTradeHistory();
@@ -535,12 +1177,15 @@ onAuthStateChanged(auth, async (user) => {
     updateDailyPnlChart();
     updatePeriodSummary();
     updatePsychologyVerdict();
+    renderBlogPosts();
 
     loginBtn.textContent = "Login";
     loginBtn.title = "";
     loginBtn.onclick = () => openLoginPopup();
     updateAccountBadge(null);
     updateHeroAccountButton(null);
+    updateMonthlyTargetWidget();
+    updateFloatingAuthButton(null);
   }
 });
 
@@ -886,6 +1531,7 @@ return;
   updateDailyPnlChart();
   updatePeriodSummary();
   updatePsychologyVerdict();
+  updateMonthlyTargetWidget();
  showProcessWarning(trade);
 resetTradeForm();
 document.getElementById("entryReason").value = "";
@@ -901,7 +1547,7 @@ function safeText(id, value) {
 }
 
 function money(value) {
-  return "₹" + Number(value || 0).toFixed(2);
+  return `${INR}${Number(value || 0).toFixed(2)}`;
 }
 
 function getSelectedValues(id) {
@@ -1079,10 +1725,10 @@ function updateMonthlyDashboard() {
   const currentYear = now.getFullYear();
 
   const monthlyTrades = trades.filter((trade) => {
-    if (!trade.date) return false;
-    const tradeDate = new Date(trade.date);
-    return tradeDate.getMonth() === currentMonth &&
-           tradeDate.getFullYear() === currentYear;
+    const tradeDay = getTradeDateKey(trade);
+    if (!tradeDay) return false;
+    const [year, month] = tradeDay.split("-").map(Number);
+    return month - 1 === currentMonth && year === currentYear;
   });
 
   const monthTrades = monthlyTrades.length;
@@ -1102,8 +1748,10 @@ function updateMonthlyDashboard() {
   const dayStats = {};
 
   monthlyTrades.forEach((trade) => {
-    if (!dayStats[trade.date]) dayStats[trade.date] = 0;
-    dayStats[trade.date] += Number(trade.pnl) || 0;
+    const tradeDay = getTradeDateKey(trade);
+    if (!tradeDay) return;
+    if (!dayStats[tradeDay]) dayStats[tradeDay] = 0;
+    dayStats[tradeDay] += getTradePnl(trade);
   });
 
   let bestDay = "No Data";
@@ -1125,11 +1773,14 @@ function updateMonthlyDashboard() {
 
   let greenDays = 0;
   let redDays = 0;
+  let flatDays = 0;
 
   Object.values(dayStats).forEach((pnl) => {
     if (pnl > 0) greenDays++;
     if (pnl < 0) redDays++;
+    if (pnl === 0) flatDays++;
   });
+  const tradingDays = Object.keys(dayStats).length;
 
   let winningStreak = 0;
   let losingStreak = 0;
@@ -1163,8 +1814,13 @@ function updateMonthlyDashboard() {
 
   safeText("greenDays", greenDays);
   safeText("redDays", redDays);
+  safeText("proTradingDays", tradingDays);
   safeText("proGreenDays", greenDays);
   safeText("proRedDays", redDays);
+  safeText(
+    "tradeDayExplanation",
+    `${monthTrades} trade ${monthTrades === 1 ? "entry" : "entries"} over ${tradingDays} trading ${tradingDays === 1 ? "day" : "days"}. Green ${greenDays}, red ${redDays}${flatDays ? `, flat ${flatDays}` : ""}.`
+  );
 
   safeText("heroProfitFactor", profitFactor.toFixed(2));
   safeText("winningStreak", winningStreak);
@@ -1460,14 +2116,14 @@ if (worstTime) {
     "âœ… No weak time slot detected yet.";
 }
   document.getElementById("totalTrades").innerText = totalTrades;
-  document.getElementById("totalPnl").innerText = "₹" + totalPnl.toFixed(2);
+  document.getElementById("totalPnl").innerText = money(totalPnl);
   document.getElementById("winRate").innerText = winRate + "%";
   document.getElementById("rulesRate").innerText = rulesRate + "%";
-  document.getElementById("heroPnl").innerText = "₹" + totalPnl.toFixed(2);
+  document.getElementById("heroPnl").innerText = money(totalPnl);
 document.getElementById("heroWinRate").innerText = winRate + "%";
 document.getElementById("proTotalTrades").innerText = totalTrades;
-document.getElementById("proBestTrade").innerText = "₹" + bestTrade.toFixed(2);
-document.getElementById("proWorstTrade").innerText = "₹" + worstTrade.toFixed(2);
+document.getElementById("proBestTrade").innerText = money(bestTrade);
+document.getElementById("proWorstTrade").innerText = money(worstTrade);
 document.getElementById("proRulesRate").innerText = rulesRate + "%";
   const topMistakesList = document.getElementById("topMistakesList");
 topMistakesList.innerHTML = "";
@@ -1581,20 +2237,20 @@ function updateCalendarHeatmap() {
   const box = document.getElementById("calendarHeatmap");
   if (!box) return;
 
-  box.innerHTML = "";
-
   const now = new Date();
   const year = now.getFullYear();
   const month = now.getMonth();
-
   const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const firstDay = new Date(year, month, 1).getDay();
+  const monthName = now.toLocaleString("en-US", { month: "long", year: "numeric" });
 
   const dayStats = {};
 
   trades.forEach((trade) => {
-    if (!trade.date) return;
-
-    const d = new Date(trade.date);
+    const rawDate = trade.date || trade.tradeDate || trade.createdAt?.toDate?.();
+    if (!rawDate) return;
+    const d = rawDate instanceof Date ? rawDate : new Date(rawDate);
+    if (Number.isNaN(d.getTime())) return;
     if (d.getMonth() !== month || d.getFullYear() !== year) return;
 
     const day = d.getDate();
@@ -1606,43 +2262,96 @@ function updateCalendarHeatmap() {
       };
     }
 
-    dayStats[day].pnl += Number(trade.pnl) || 0;
+    dayStats[day].pnl += getTradePnl(trade);
     dayStats[day].trades++;
   });
 
+  const pnlValues = Object.values(dayStats).map((day) => Math.abs(day.pnl));
+  const maxAbsPnl = Math.max(...pnlValues, 1);
+  const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  let cells = "";
+
+  for (let blank = 0; blank < firstDay; blank++) {
+    cells += `<div class="activity-day empty"></div>`;
+  }
+
   for (let day = 1; day <= daysInMonth; day++) {
     const data = dayStats[day];
-
-    let cls = "no-trade-day";
-    let info = `${day}: No Trade`;
+    let cls = "activity-day no-trade";
+    let info = `${monthName} ${day}: No trade`;
+    let details = `<span>No trade</span>`;
 
     if (data) {
-      cls = data.pnl >= 0 ? "profit-day" : "loss-day";
-      info = `${day}: ₹${data.pnl.toFixed(2)} | Trades: ${data.trades}`;
+      const intensity = Math.max(1, Math.min(4, Math.ceil((Math.abs(data.pnl) / maxAbsPnl) * 4)));
+      cls = `activity-day ${data.pnl >= 0 ? "profit" : "loss"} level-${intensity}`;
+      info = `${monthName} ${day}: ${data.trades} trade${data.trades > 1 ? "s" : ""} | P&L ${money(data.pnl)}`;
+      details = `<span>${data.trades} trade${data.trades > 1 ? "s" : ""}</span><strong>${money(data.pnl)}</strong>`;
     }
 
-    box.innerHTML += `
-      <div class="heat-day ${cls}" data-info="${info}">
-        ${day}
+    cells += `
+      <div class="${cls}" title="${escapeHtml(info)}" data-tooltip="${escapeHtml(info)}" aria-label="${escapeHtml(info)}">
+        <b>${day}</b>
+        ${details}
       </div>
     `;
   }
+
+  const totalCells = firstDay + daysInMonth;
+  const trailing = (7 - (totalCells % 7)) % 7;
+  for (let blank = 0; blank < trailing; blank++) {
+    cells += `<div class="activity-day empty"></div>`;
+  }
+
+  const monthlyPnl = Object.values(dayStats).reduce((sum, day) => sum + day.pnl, 0);
+  const monthlyTrades = Object.values(dayStats).reduce((sum, day) => sum + day.trades, 0);
+
+  box.innerHTML = `
+    <div class="activity-calendar">
+      <div class="activity-calendar-head">
+        <div>
+          <h4>${monthName}</h4>
+          <p>${monthlyTrades} trades | ${money(monthlyPnl)} monthly P&L</p>
+        </div>
+        <div class="activity-legend">
+          <span class="legend-profit"></span> Profit
+          <span class="legend-loss"></span> Loss
+          <span class="legend-flat"></span> No trade
+        </div>
+      </div>
+      <div class="activity-weekdays">
+        ${weekdays.map((day) => `<span>${day}</span>`).join("")}
+      </div>
+      <div class="activity-month-grid">
+        ${cells}
+      </div>
+    </div>
+  `;
 }
 function updateEquityCurve() {
   const chart = document.getElementById("equityCurve");
+  if (!chart) return;
   chart.innerHTML = "";
 
-  if (!trades.length) return;
+  if (!trades.length) {
+    chart.innerHTML = `<text x="250" y="112" text-anchor="middle" class="chart-empty-label">Performance will appear here</text>`;
+    return;
+  }
 
   let runningTotal = 0;
-  const points = trades.map((trade) => {
-    runningTotal += trade.pnl;
+  const orderedTrades = [...trades].sort((a, b) => {
+    const aTime = new Date(`${getTradeDateKey(a) || "1970-01-01"}T${a.time || a.tradeTime || "00:00"}`).getTime();
+    const bTime = new Date(`${getTradeDateKey(b) || "1970-01-01"}T${b.time || b.tradeTime || "00:00"}`).getTime();
+    return aTime - bTime;
+  });
+  const points = orderedTrades.map((trade) => {
+    runningTotal += getTradePnl(trade);
     return runningTotal;
   });
 
   const width = 500;
   const height = 220;
-  const padding = 25;
+  const paddingX = 36;
+  const paddingY = 28;
 
   const min = Math.min(...points, 0);
   const max = Math.max(...points, 0);
@@ -1651,20 +2360,25 @@ function updateEquityCurve() {
 
   const getX = (index) => {
     if (points.length === 1) return width / 2;
-    return padding + (index * (width - padding * 2)) / (points.length - 1);
+    return paddingX + (index * (width - paddingX * 2)) / (points.length - 1);
   };
 
   const getY = (value) => {
-    return height - padding - ((value - min) / range) * (height - padding * 2);
+    return height - paddingY - ((value - min) / range) * (height - paddingY * 2);
   };
 
   const zeroY = getY(0);
 
+  [0.25, 0.5, 0.75].forEach((ratio) => {
+    const y = paddingY + (height - paddingY * 2) * ratio;
+    chart.innerHTML += `<line x1="${paddingX}" y1="${y}" x2="${width - paddingX}" y2="${y}" class="chart-grid-line" />`;
+  });
+
   chart.innerHTML += `
     <line
-      x1="${padding}"
+      x1="${paddingX}"
       y1="${zeroY}"
-      x2="${width - padding}"
+      x2="${width - paddingX}"
       y2="${zeroY}"
       class="equity-zero-line"
     />
@@ -1675,6 +2389,12 @@ function updateEquityCurve() {
       return `${index === 0 ? "M" : "L"} ${getX(index)} ${getY(point)}`;
     })
     .join(" ");
+
+  const areaData = `${pathData} L ${getX(points.length - 1)} ${height - paddingY} L ${getX(0)} ${height - paddingY} Z`;
+
+  chart.innerHTML += `
+    <path d="${areaData}" class="equity-area"></path>
+  `;
 
   chart.innerHTML += `
     <path d="${pathData}" class="equity-line"></path>
@@ -1690,6 +2410,11 @@ function updateEquityCurve() {
       ></circle>
     `;
   });
+
+  chart.innerHTML += `
+    <text x="${paddingX}" y="${height - 8}" class="chart-axis-label">Start</text>
+    <text x="${width - paddingX}" y="${height - 8}" text-anchor="end" class="chart-axis-label">${money(points.at(-1))}</text>
+  `;
 }
 
 function updateDailyPnlChart() {
@@ -1706,28 +2431,43 @@ function updateDailyPnlChart() {
   const dayStats = {};
 
   trades.forEach((trade) => {
-    if (!trade.date) return;
-    dayStats[trade.date] = (dayStats[trade.date] || 0) + (Number(trade.pnl) || 0);
+    const tradeDay = getTradeDateKey(trade);
+    if (!tradeDay) return;
+    dayStats[tradeDay] = (dayStats[tradeDay] || 0) + getTradePnl(trade);
   });
 
   const entries = Object.entries(dayStats).sort((a, b) => new Date(a[0]) - new Date(b[0])).slice(-14);
+  if (!entries.length) {
+    chart.innerHTML = `<text x="250" y="110" text-anchor="middle" class="chart-empty-label">Daily P&L will appear here</text>`;
+    return;
+  }
+
   const values = entries.map((entry) => entry[1]);
 
   const width = 500;
   const height = 220;
-  const padding = 28;
+  const paddingX = 36;
+  const paddingY = 30;
   const maxAbs = Math.max(...values.map((value) => Math.abs(value)), 1);
   const zeroY = height / 2;
-  const barGap = 8;
-  const barWidth = (width - padding * 2 - barGap * (entries.length - 1)) / entries.length;
+  const barGap = entries.length > 8 ? 6 : 10;
+  const availableWidth = width - paddingX * 2;
+  const barWidth = Math.max(10, Math.min(34, (availableWidth - barGap * (entries.length - 1)) / entries.length));
+  const chartWidth = entries.length * barWidth + barGap * (entries.length - 1);
+  const startX = paddingX + (availableWidth - chartWidth) / 2;
+
+  [0.25, 0.5, 0.75].forEach((ratio) => {
+    const y = paddingY + (height - paddingY * 2) * ratio;
+    chart.innerHTML += `<line x1="${paddingX}" y1="${y}" x2="${width - paddingX}" y2="${y}" class="chart-grid-line" />`;
+  });
 
   chart.innerHTML += `
-    <line x1="${padding}" y1="${zeroY}" x2="${width - padding}" y2="${zeroY}" class="equity-zero-line" />
+    <line x1="${paddingX}" y1="${zeroY}" x2="${width - paddingX}" y2="${zeroY}" class="equity-zero-line" />
   `;
 
   entries.forEach(([date, pnl], index) => {
-    const barHeight = Math.max(4, (Math.abs(pnl) / maxAbs) * (height / 2 - padding));
-    const x = padding + index * (barWidth + barGap);
+    const barHeight = Math.max(5, (Math.abs(pnl) / maxAbs) * (height / 2 - paddingY - 8));
+    const x = startX + index * (barWidth + barGap);
     const y = pnl >= 0 ? zeroY - barHeight : zeroY;
     const cls = pnl >= 0 ? "daily-bar profit-bar" : "daily-bar loss-bar";
     const day = new Date(date).getDate();
@@ -1736,7 +2476,7 @@ function updateDailyPnlChart() {
       <rect x="${x}" y="${y}" width="${barWidth}" height="${barHeight}" rx="4" class="${cls}">
         <title>${date}: ${money(pnl)}</title>
       </rect>
-      <text x="${x + barWidth / 2}" y="${height - 8}" text-anchor="middle" fill="#777" font-size="10">${day}</text>
+      <text x="${x + barWidth / 2}" y="${height - 8}" text-anchor="middle" class="chart-axis-label">${day}</text>
     `;
   });
 }
@@ -2227,7 +2967,10 @@ editingTradeId = null;
     document.getElementById("loginPopup").style.display = "none";
   }
 
-  window.addEventListener('scroll', revealSections);
+  window.addEventListener('scroll', () => {
+    revealSections();
+    updateFloatingAuthButton();
+  });
   document.getElementById("tradeModal")?.addEventListener("click", (event) => {
     if (event.target.id === "tradeModal") {
       closeTradeModal();
@@ -2277,6 +3020,7 @@ editingTradeId = null;
   });
 
   revealSections();
+  updateFloatingAuthButton();
 window.saveTrade = saveTrade;
 window.toggleOptionFields = toggleOptionFields;
 window.toggleAdvancedAnalytics = toggleAdvancedAnalytics;
@@ -2285,6 +3029,7 @@ window.deleteTrade = deleteTrade;
 window.editTrade = editTrade;
 window.openLoginPopup = openLoginPopup;
 window.closeLoginPopup = closeLoginPopup;
+window.openJournalGate = openJournalGate;
 window.toggleLoginPassword = toggleLoginPassword;
 window.toggleMobileMenu = toggleMobileMenu;
 window.setAuthMode = setAuthMode;
@@ -2292,9 +3037,22 @@ window.openTradeDetail = openTradeDetail;
 window.closeTradeDetail = closeTradeDetail;
 window.openProfileModal = openProfileModal;
 window.closeProfileModal = closeProfileModal;
+window.renderProfileView = renderProfileView;
+window.renderProfileEdit = renderProfileEdit;
+window.saveProfileDetails = saveProfileDetails;
+window.saveQuickMonthlyTarget = saveQuickMonthlyTarget;
+window.saveBlogPost = saveBlogPost;
+window.deleteBlogPost = deleteBlogPost;
+window.clearBlogForm = clearBlogForm;
+window.logoutCurrentUser = logoutCurrentUser;
+window.toggleProfileMenu = toggleProfileMenu;
+window.toggleCustomizePanel = toggleCustomizePanel;
+window.setDashboardLayout = setDashboardLayout;
 // ================= ADVANCED JOURNAL ANALYTICS =================
 
 function updateAdvancedAnalytics() {
+  updateDecisionCoach();
+
   if (!Array.isArray(trades) || trades.length === 0) {
     return;
   }
@@ -2311,8 +3069,311 @@ function getTradePnl(trade) {
   return Number(trade.pnl || trade.profitLoss || trade.pl || 0);
 }
 
+function getTradeDateKey(trade) {
+  const rawDate = trade?.date || trade?.tradeDate || trade?.createdAt?.toDate?.();
+  if (!rawDate) return "";
+
+  if (typeof rawDate === "string" && /^\d{4}-\d{2}-\d{2}/.test(rawDate)) {
+    return rawDate.slice(0, 10);
+  }
+
+  const date = rawDate instanceof Date ? rawDate : new Date(rawDate);
+  if (Number.isNaN(date.getTime())) return "";
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 function formatMoney(value) {
-  return "₹" + Number(value || 0).toFixed(2);
+  return `${INR}${Number(value || 0).toFixed(2)}`;
+}
+
+function isRuleFollowed(trade) {
+  return trade.rules === true || trade.rules === "Yes" || trade.rules === "Followed";
+}
+
+function getCurrentMonthTradesForAnalytics() {
+  const now = new Date();
+  const month = now.getMonth();
+  const year = now.getFullYear();
+
+  return trades.filter((trade) => {
+    const dateKey = getTradeDateKey(trade);
+    if (!dateKey) return false;
+    const tradeDate = new Date(`${dateKey}T00:00:00`);
+    return tradeDate.getMonth() === month && tradeDate.getFullYear() === year;
+  });
+}
+
+function getTradeTimeSlot(trade) {
+  const raw = String(trade.time || trade.tradeTime || "").trim();
+  if (!raw) return "";
+
+  let hour = 0;
+  let minute = 0;
+  const amPmMatch = raw.match(/(\d{1,2})[:.](\d{2})\s*(AM|PM)/i);
+  const twentyFourMatch = raw.match(/(\d{1,2})[:.](\d{2})/);
+
+  if (amPmMatch) {
+    hour = Number(amPmMatch[1]);
+    minute = Number(amPmMatch[2]);
+    const period = amPmMatch[3].toUpperCase();
+    if (period === "PM" && hour < 12) hour += 12;
+    if (period === "AM" && hour === 12) hour = 0;
+  } else if (twentyFourMatch) {
+    hour = Number(twentyFourMatch[1]);
+    minute = Number(twentyFourMatch[2]);
+  } else {
+    return "";
+  }
+
+  const minutes = hour * 60 + minute;
+  const slots = [
+    ["09:15 - 10:00", 9 * 60 + 15, 10 * 60],
+    ["10:00 - 11:00", 10 * 60, 11 * 60],
+    ["11:00 - 12:00", 11 * 60, 12 * 60],
+    ["12:00 - 01:00", 12 * 60, 13 * 60],
+    ["01:00 - 02:00", 13 * 60, 14 * 60],
+    ["02:00 - 03:30", 14 * 60, 15 * 60 + 30]
+  ];
+
+  const slot = slots.find((item) => minutes >= item[1] && minutes < item[2]);
+  return slot ? slot[0] : "";
+}
+
+function parseTradeRR(trade) {
+  if (Number.isFinite(Number(trade.rr))) return Number(trade.rr);
+  const raw = String(trade.rrRatio || trade.riskReward || "").trim();
+  const match = raw.match(/1\s*:\s*([\d.]+)/);
+  return match ? Number(match[1]) || 0 : 0;
+}
+
+function makeDecisionStat() {
+  return { trades: 0, wins: 0, losses: 0, pnl: 0, lossCost: 0 };
+}
+
+function addTradeToDecisionStat(stat, trade) {
+  const pnl = getTradePnl(trade);
+  stat.trades += 1;
+  stat.pnl += pnl;
+  if (pnl > 0) stat.wins += 1;
+  if (pnl < 0) {
+    stat.losses += 1;
+    stat.lossCost += Math.abs(pnl);
+  }
+}
+
+function getWinRate(stat) {
+  return stat?.trades ? Math.round((stat.wins / stat.trades) * 100) : 0;
+}
+
+function renderDecisionInsight(type, label, title, text) {
+  return `
+    <div class="decision-insight ${type}">
+      <span>${escapeHtml(label)}</span>
+      <strong>${escapeHtml(title)}</strong>
+      <p>${text}</p>
+    </div>
+  `;
+}
+
+function updateDecisionCoach() {
+  const box = document.getElementById("decisionCoachBox");
+  if (!box) return;
+
+  if (!Array.isArray(trades) || trades.length === 0) {
+    box.innerHTML = renderDecisionInsight(
+      "neutral",
+      "Waiting for data",
+      "Add trades to unlock decisions",
+      "Your journal will show setup edge, weak time slots, mistake cost, and next rules."
+    );
+    return;
+  }
+
+  const monthTrades = getCurrentMonthTradesForAnalytics();
+  const activeTrades = monthTrades.length ? monthTrades : trades;
+  const scopeLabel = monthTrades.length ? "this month" : "all saved trades";
+  const setupStats = {};
+  const mistakeStats = {};
+  const timeStats = {};
+  const dayStats = {};
+  const ruleFollowed = makeDecisionStat();
+  const ruleBroken = makeDecisionStat();
+  let rrTotal = 0;
+  let rrCount = 0;
+
+  activeTrades.forEach((trade) => {
+    const setup = trade.setup || "No Setup";
+    setupStats[setup] = setupStats[setup] || makeDecisionStat();
+    addTradeToDecisionStat(setupStats[setup], trade);
+
+    getTradeMistakes(trade).forEach((mistake) => {
+      if (!mistake || mistake === "No Mistake") return;
+      mistakeStats[mistake] = mistakeStats[mistake] || makeDecisionStat();
+      addTradeToDecisionStat(mistakeStats[mistake], trade);
+    });
+
+    const slot = getTradeTimeSlot(trade);
+    if (slot) {
+      timeStats[slot] = timeStats[slot] || makeDecisionStat();
+      addTradeToDecisionStat(timeStats[slot], trade);
+    }
+
+    const dateKey = getTradeDateKey(trade);
+    if (dateKey) {
+      dayStats[dateKey] = dayStats[dateKey] || makeDecisionStat();
+      addTradeToDecisionStat(dayStats[dateKey], trade);
+    }
+
+    addTradeToDecisionStat(isRuleFollowed(trade) ? ruleFollowed : ruleBroken, trade);
+
+    const rr = parseTradeRR(trade);
+    if (rr > 0) {
+      rrTotal += rr;
+      rrCount += 1;
+    }
+  });
+
+  const setups = Object.entries(setupStats);
+  const mistakes = Object.entries(mistakeStats);
+  const times = Object.entries(timeStats);
+  const days = Object.entries(dayStats);
+
+  const bestSetup = setups.length ? [...setups].sort((a, b) => b[1].pnl - a[1].pnl)[0] : null;
+  const worstSetup = setups.length ? [...setups].sort((a, b) => a[1].pnl - b[1].pnl)[0] : null;
+  const biggestMistake = mistakes.length ? [...mistakes].sort((a, b) => b[1].lossCost - a[1].lossCost)[0] : null;
+  const worstTime = times.length ? [...times].sort((a, b) => a[1].pnl - b[1].pnl)[0] : null;
+  const bestTime = times.length ? [...times].sort((a, b) => b[1].pnl - a[1].pnl)[0] : null;
+  const overtradeDay = days
+    .filter((item) => item[1].trades >= 2 && item[1].pnl < 0)
+    .sort((a, b) => b[1].trades - a[1].trades || a[1].pnl - b[1].pnl)[0];
+  const avgRR = rrCount ? rrTotal / rrCount : 0;
+  const followedAvg = ruleFollowed.trades ? ruleFollowed.pnl / ruleFollowed.trades : 0;
+  const brokenAvg = ruleBroken.trades ? ruleBroken.pnl / ruleBroken.trades : 0;
+  const actionList = [];
+  const cards = [];
+
+  if (biggestMistake && biggestMistake[1].lossCost > 0) {
+    actionList.push(`Block ${biggestMistake[0]} for the next 5 trades.`);
+    cards.push(renderDecisionInsight(
+      "warning",
+      "Biggest leak",
+      biggestMistake[0],
+      `Loss cost ${formatMoney(biggestMistake[1].lossCost)} across ${biggestMistake[1].trades} trade${biggestMistake[1].trades > 1 ? "s" : ""} in ${scopeLabel}. Make a hard rule before taking this setup again.`
+    ));
+  } else {
+    cards.push(renderDecisionInsight(
+      "good",
+      "Mistake control",
+      "No major mistake cost yet",
+      `No repeated loss-making mistake is visible in ${scopeLabel}. Keep writing notes after every exit.`
+    ));
+  }
+
+  if (bestSetup) {
+    cards.push(renderDecisionInsight(
+      "good",
+      "Best setup",
+      bestSetup[0],
+      `${getWinRate(bestSetup[1])}% win rate, ${formatMoney(bestSetup[1].pnl)} P&L. This is your current edge. Prefer this only when entry rules are clean.`
+    ));
+  }
+
+  if (worstSetup && worstSetup[1].pnl < 0) {
+    actionList.push(`Reduce size or pause ${worstSetup[0]} until reviewed.`);
+    cards.push(renderDecisionInsight(
+      "warning",
+      "Weak setup",
+      worstSetup[0],
+      `${formatMoney(worstSetup[1].pnl)} P&L with ${getWinRate(worstSetup[1])}% win rate. Review screenshots before taking this setup again.`
+    ));
+  } else {
+    cards.push(renderDecisionInsight(
+      "neutral",
+      "Setup risk",
+      "No losing setup flagged",
+      "No setup is clearly damaging the account yet. Continue collecting samples before scaling size."
+    ));
+  }
+
+  if (worstTime && worstTime[1].pnl < 0) {
+    actionList.push(`Avoid ${worstTime[0]} until it gives 5 clean journal entries.`);
+    cards.push(renderDecisionInsight(
+      "warning",
+      "Weak time slot",
+      worstTime[0],
+      `${formatMoney(worstTime[1].pnl)} P&L. Avoid this slot or trade half quantity until the data improves.`
+    ));
+  } else if (bestTime) {
+    cards.push(renderDecisionInsight(
+      "good",
+      "Best time slot",
+      bestTime[0],
+      `${formatMoney(bestTime[1].pnl)} P&L with ${getWinRate(bestTime[1])}% win rate. Your better execution is appearing here.`
+    ));
+  }
+
+  if (ruleBroken.trades && brokenAvg < followedAvg) {
+    actionList.push("Take no trade unless the Rules Followed checkbox is honestly true.");
+    cards.push(renderDecisionInsight(
+      "warning",
+      "Rules impact",
+      "Rule breaks are costly",
+      `Rules followed avg ${formatMoney(followedAvg)} vs rules broken avg ${formatMoney(brokenAvg)}. This is process leakage, not market problem.`
+    ));
+  } else {
+    cards.push(renderDecisionInsight(
+      "good",
+      "Rules impact",
+      "Rules are protecting you",
+      `Rules followed P&L is ${formatMoney(ruleFollowed.pnl)} in ${scopeLabel}. Keep execution boring and repeatable.`
+    ));
+  }
+
+  if (avgRR && avgRR < 1.5) {
+    actionList.push("Skip trades below 1 : 1.5 planned R:R.");
+    cards.push(renderDecisionInsight(
+      "warning",
+      "Risk reward",
+      `Avg R:R ${avgRR.toFixed(2)}`,
+      "Your average planned reward is too close to risk. Improve target placement or skip weak entries."
+    ));
+  } else if (avgRR) {
+    cards.push(renderDecisionInsight(
+      "good",
+      "Risk reward",
+      `Avg R:R ${avgRR.toFixed(2)}`,
+      "Planned R:R is healthy. Now focus on entry quality and rule discipline."
+    ));
+  }
+
+  if (overtradeDay) {
+    actionList.push(`Use a daily trade limit after ${overtradeDay[1].trades} trades.`);
+    cards.push(renderDecisionInsight(
+      "warning",
+      "Overtrading alert",
+      overtradeDay[0],
+      `${overtradeDay[1].trades} trades and ${formatMoney(overtradeDay[1].pnl)} P&L on this day. Add a daily stop after repeated entries.`
+    ));
+  }
+
+  const fallbackActions = [
+    "Journal entry reason before every trade.",
+    "Review losing trades at market close.",
+    "Trade only the best setup until data improves."
+  ];
+  const finalActions = [...actionList, ...fallbackActions].slice(0, 3);
+  cards.push(renderDecisionInsight(
+    "neutral",
+    "Next 3 actions",
+    "For the next trading day",
+    finalActions.map((action, index) => `${index + 1}. ${escapeHtml(action)}`).join("<br>")
+  ));
+
+  box.innerHTML = cards.join("");
 }
 
 // 1. Rule Break Cost Analyzer
@@ -2332,13 +3393,16 @@ function updateRuleBreakCostAnalyzer() {
 
   document.getElementById("rulesFollowedPnl").innerText = formatMoney(followedPnl);
   document.getElementById("rulesBrokenPnl").innerText = formatMoney(brokenPnl);
+  safeText("ruleBreakCost", formatMoney(brokenPnl < 0 ? Math.abs(brokenPnl) : 0));
   safeText("rulesFollowedPnlAdvanced", formatMoney(followedPnl));
   safeText("rulesBrokenPnlAdvanced", formatMoney(brokenPnl));
 
   document.getElementById("rulesFollowedPnl").className = followedPnl >= 0 ? "profit-text" : "loss-text";
   document.getElementById("rulesBrokenPnl").className = brokenPnl >= 0 ? "profit-text" : "loss-text";
+  const ruleCost = document.getElementById("ruleBreakCost");
   const followedAdvanced = document.getElementById("rulesFollowedPnlAdvanced");
   const brokenAdvanced = document.getElementById("rulesBrokenPnlAdvanced");
+  if (ruleCost) ruleCost.className = brokenPnl < 0 ? "loss-text" : "profit-text";
   if (followedAdvanced) followedAdvanced.className = followedPnl >= 0 ? "profit-text" : "loss-text";
   if (brokenAdvanced) brokenAdvanced.className = brokenPnl >= 0 ? "profit-text" : "loss-text";
 }
@@ -2407,7 +3471,7 @@ function updateMonthlyReportCard() {
   const winRate = totalTrades ? ((winners.length / totalTrades) * 100).toFixed(0) : 0;
   const avgWinner = winners.length ? totalProfit / winners.length : 0;
   const avgLoser = losers.length ? totalLoss / losers.length : 0;
-  const profitFactor = totalLoss ? (totalProfit / totalLoss).toFixed(2) : totalProfit > 0 ? "âˆž" : "0";
+  const profitFactor = totalLoss ? (totalProfit / totalLoss).toFixed(2) : totalProfit > 0 ? "\u221e" : "0";
 
   document.getElementById("monthTotalTrades").innerText = totalTrades;
   document.getElementById("monthWinRate").innerText = winRate + "%";
@@ -2425,11 +3489,11 @@ function updateBestWorstTrade() {
 
   document.getElementById("bestTradeBox").innerText = bestTrade
     ? `${bestTrade.symbol || "Trade"} | ${formatMoney(getTradePnl(bestTrade))}`
-    : "₹0";
+    : formatMoney(0);
 
   document.getElementById("worstTradeBox").innerText = worstTrade
     ? `${worstTrade.symbol || "Trade"} | ${formatMoney(getTradePnl(worstTrade))}`
-    : "₹0";
+    : formatMoney(0);
 
   document.getElementById("bestTradeBox").className = "profit-text";
   document.getElementById("worstTradeBox").className = "loss-text";
@@ -2438,6 +3502,12 @@ function updateBestWorstTrade() {
 // 5. Trader Score
 function updateTraderScore() {
   const totalTrades = trades.length;
+  if (!totalTrades) {
+    safeText("traderScoreBox", "0/100");
+    safeText("traderScoreText", "Start journaling to build your score");
+    return;
+  }
+
   const winners = trades.filter(trade => getTradePnl(trade) > 0).length;
 
   const rulesFollowed = trades.filter(trade =>
@@ -2454,11 +3524,14 @@ function updateTraderScore() {
   const winRateScore = (winners / totalTrades) * 30;
   const ruleScore = (rulesFollowed / totalTrades) * 30;
   const mistakeScore = (noMistakeTrades / totalTrades) * 25;
-  const disciplineScore = (avgDiscipline / 5) * 15;
+  const disciplineScore = (Math.min(avgDiscipline, 25) / 25) * 15;
 
-  const finalScore = Math.round(winRateScore + ruleScore + mistakeScore + disciplineScore);
+  const finalScore = Math.max(
+    0,
+    Math.min(100, Math.round(winRateScore + ruleScore + mistakeScore + disciplineScore))
+  );
 
-  document.getElementById("traderScoreBox").innerText = finalScore + "/100";
+  safeText("traderScoreBox", finalScore + "/100");
 
   let scoreText = "Needs improvement";
 
@@ -2470,7 +3543,7 @@ function updateTraderScore() {
     scoreText = "Average. Mistakes aur rule break kam karo.";
   }
 
-  document.getElementById("traderScoreText").innerText = scoreText;
+  safeText("traderScoreText", scoreText);
 }
 
 // 6. AI Pattern Detector

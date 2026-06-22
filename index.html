@@ -8,11 +8,11 @@
   <meta name="description" content="RamPath Journal is a focused trade journal dashboard for tracking trades, P&L, psychology, mistakes, rules, and execution quality.">
   <meta name="author" content="RamPath Journal">
   
-  <link rel="stylesheet" href="style.css?v=20260619-profile">
+  <link rel="stylesheet" href="style.css?v=20260619-about-contact-polish">
   <link rel="icon" type="image/png" href="logo.png">
 </head>
 
-<body>
+<body class="sidebar-nav">
 
  <nav>
   <a href="#home" class="brand-link">RamPath Journal</a>
@@ -26,7 +26,7 @@
   <div id="navMenu">
   <a href="#home">Home</a>
   <a href="#journal">Journal</a>
-  <a href="#features">Features</a>
+  <a href="blog.html">Blog</a>
   <a href="#about">About Creator</a>
   <a href="#contact">Contact</a>
   <span id="accountBadge" class="account-badge">Guest</span>
@@ -34,33 +34,221 @@
 </div>              
 </nav>
 
+<aside class="app-sidebar" id="appSidebar">
+  <a href="#home" class="sidebar-brand" onclick="openJournalGate('dashboard'); return false;">RamPath</a>
+  <p>Trading Journal</p>
+  <button type="button" onclick="openJournalGate('dashboard')">Dashboard</button>
+  <button type="button" onclick="openTradeModal()">Add Trade</button>
+  <button type="button" onclick="openJournalGate('trades')">Trades</button>
+  <button type="button" onclick="openJournalGate('analytics')">Analytics</button>
+  <button type="button" onclick="window.location.href='blog.html'">Blog</button>
+  <button type="button" onclick="openProfileModal()">Profile</button>
+  <button type="button" class="sidebar-logout" onclick="logoutCurrentUser()">Logout</button>
+</aside>
+
+<button type="button" id="floatingAuthBtn" class="floating-auth-btn" onclick="openLoginPopup()">
+  Login / Sign Up
+</button>
+
   <section class="hero" id="home">
     <p class="description">
-Built for traders who want clear records, clean review, and better discipline.
-</p>
+      Built for traders who want clear records, clean review, and better discipline.
+    </p>
     <h1>RamPath Journal<br>for Serious Trade Review.</h1>
     <div class="hero-stats">
-  <div>
-    <h3>Trade Log</h3>
-    <p>Entry, Exit, SL, Target</p>
-  </div>
+      <div>
+        <h3>Trade Log</h3>
+        <p>Entry, Exit, SL, Target</p>
+      </div>
 
-  <div>
-    <h3>Psychology</h3>
-    <p>Mistakes & Discipline</p>
-  </div>
+      <div>
+        <h3>Psychology</h3>
+        <p>Mistakes & Discipline</p>
+      </div>
 
-  <div>
-    <h3>Analytics</h3>
-    <p>P&L, R:R, Win Rate</p>
-  </div>
-</div>
+      <div>
+        <h3>Analytics</h3>
+        <p>P&L, R:R, Win Rate</p>
+      </div>
+    </div>
     <p class="description">
       Record every trade, review your behavior, spot repeat mistakes, and build a process you can trust.
     </p>
-    <a href="#journal" class="btn">Open Journal</a>
-    <a href="javascript:void(0)" id="heroAccountBtn" class="btn" onclick="openLoginPopup()">Login / Create Account</a>
+    <button type="button" id="heroOpenJournalBtn" class="btn" onclick="openJournalGate('dashboard')">Open Journal</button>
+    <button type="button" id="heroAccountBtn" class="btn" onclick="openLoginPopup()">Login / Create Account</button>
   </section>
+
+<section class="guest-dashboard-preview reveal" id="guestPreview">
+  <div class="journal-topbar preview-topbar">
+    <div>
+      <p class="section-title">RamPath Journal</p>
+      <h2>Your Trade Journal Dashboard</h2>
+      <p>Preview of the same dashboard you unlock after login.</p>
+    </div>
+    <div class="app-top-actions">
+      <button type="button" class="customize-btn" onclick="openLoginPopup()">Login</button>
+      <button type="button" class="add-day-btn" onclick="openJournalGate('start')">Create Account</button>
+    </div>
+  </div>
+
+  <div class="monthly-target-widget preview-widget">
+    <div class="target-icon">&#8377;</div>
+    <div class="target-content">
+      <span>Monthly Target</span>
+      <strong>68% completed</strong>
+      <p>&#8377;34,000 achieved out of &#8377;50,000 this month</p>
+      <div class="target-progress"><i style="width:68%"></i></div>
+    </div>
+  </div>
+
+  <div class="tracker-card dashboard-hero-card preview-widget">
+    <h3>Live Tracker</h3>
+    <div class="tracker-grid">
+      <div><span>Total Trades</span><strong>7</strong></div>
+      <div><span>Total P&L</span><strong class="profit">&#8377;44,125</strong></div>
+      <div><span>Win Rate</span><strong>57%</strong></div>
+      <div><span>Rules Followed</span><strong>100%</strong></div>
+    </div>
+  </div>
+
+  <div class="pro-dashboard-grid preview-dashboard-grid">
+    <div class="journal-card full-width-card">
+      <h3>Trading Activity</h3>
+      <div class="preview-calendar">
+        <div class="preview-calendar-head">
+          <h4>June 2026</h4>
+          <span>Sample activity</span>
+        </div>
+        <div class="preview-calendar-weekdays">
+          <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+        </div>
+        <div class="preview-calendar-grid">
+          <button class="muted">31<small>No trade</small></button><button>1<small>No trade</small></button><button>2<small>No trade</small></button><button class="profit-day">3<small>2 trades<br>+&#8377;4,400</small></button><button>4<small>No trade</small></button><button class="loss-day">5<small>1 trade<br>-&#8377;1,250</small></button><button>6<small>No trade</small></button>
+          <button>7<small>No trade</small></button><button class="profit-day">8<small>1 trade<br>+&#8377;6,900</small></button><button>9<small>No trade</small></button><button>10<small>No trade</small></button><button class="profit-day strong">11<small>2 trades<br>+&#8377;33,150</small></button><button>12<small>No trade</small></button><button>13<small>No trade</small></button>
+          <button>14<small>No trade</small></button><button class="loss-day strong">15<small>1 trade<br>-&#8377;9,750</small></button><button>16<small>No trade</small></button><button class="profit-day">17<small>1 trade<br>+&#8377;4,400</small></button><button>18<small>No trade</small></button><button class="profit-day strong">19<small>2 trades<br>+&#8377;17,940</small></button><button>20<small>No trade</small></button>
+          <button>21<small>No trade</small></button><button>22<small>No trade</small></button><button>23<small>No trade</small></button><button>24<small>No trade</small></button><button class="loss-day">25<small>1 trade<br>-&#8377;3,200</small></button><button>26<small>No trade</small></button><button>27<small>No trade</small></button>
+          <button>28<small>No trade</small></button><button>29<small>No trade</small></button><button>30<small>No trade</small></button><button class="muted">1<small>No trade</small></button><button class="muted">2<small>No trade</small></button><button class="muted">3<small>No trade</small></button><button class="muted">4<small>No trade</small></button>
+        </div>
+      </div>
+    </div>
+
+    <div class="journal-card">
+      <h3>Analytics</h3>
+      <div class="analytics-hero">
+        <div><span>Net P&L</span><strong>&#8377;44,125</strong></div>
+        <div><span>Win Rate</span><strong>57%</strong></div>
+        <div><span>Profit Factor</span><strong>2.43</strong></div>
+      </div>
+      <div class="psychology-verdict-card">
+        <h4>Psychology Verdict</h4>
+        <p><strong>76/100</strong> Good, but needs control. Strong rules, entry mistakes need review.</p>
+      </div>
+      <div class="rule-cost-card">
+        <h4>Rule Break Cost Analyzer</h4>
+        <div class="rule-cost-grid">
+          <div><span>Rules Followed P&L</span><strong class="profit-text">&#8377;44,125</strong></div>
+          <div><span>Rules Broken P&L</span><strong>&#8377;0</strong></div>
+          <div><span>Rule Break Cost</span><strong>&#8377;0</strong></div>
+        </div>
+        <p>Login to calculate this from your own trades.</p>
+      </div>
+    </div>
+
+    <div class="journal-card">
+      <h3>Performance Chart</h3>
+      <div class="chart-box preview-chart">
+        <svg viewBox="0 0 500 220" aria-label="Sample performance chart">
+          <polyline points="30,170 110,150 190,90 270,112 350,105 470,75"></polyline>
+          <circle cx="30" cy="170" r="5"></circle><circle cx="110" cy="150" r="5"></circle><circle cx="190" cy="90" r="5"></circle><circle cx="270" cy="112" r="5"></circle><circle cx="350" cy="105" r="5"></circle><circle cx="470" cy="75" r="5"></circle>
+        </svg>
+      </div>
+    </div>
+
+    <div class="journal-card">
+      <h3>Daily P&L Chart</h3>
+      <div class="chart-box preview-bar-chart">
+        <span class="loss-bar" style="height:42%"></span>
+        <span class="profit-bar" style="height:26%"></span>
+        <span class="profit-bar" style="height:62%"></span>
+        <span class="profit-bar" style="height:38%"></span>
+        <span class="loss-bar" style="height:24%"></span>
+      </div>
+    </div>
+
+    <div class="journal-card full-width-card">
+      <h3>Weekly & Monthly Summary</h3>
+      <div class="summary-grid">
+        <div><span>This Week P&L</span><strong>&#8377;22,725</strong></div>
+        <div><span>Weekly Win Rate</span><strong>75%</strong></div>
+        <div><span>Weekly Max Drawdown</span><strong>&#8377;9,750</strong></div>
+        <div><span>This Month P&L</span><strong>&#8377;44,125</strong></div>
+        <div><span>Monthly Win Rate</span><strong>57%</strong></div>
+        <div><span>Monthly Max Drawdown</span><strong>&#8377;9,750</strong></div>
+      </div>
+      <div class="summary-insights">Preview data only. Your real journal will show your own weekly and monthly review.</div>
+    </div>
+
+    <section class="advanced-analytics-section preview-advanced">
+      <h2>Advanced Journal Analytics</h2>
+      <div class="advanced-grid">
+        <div class="advanced-card decision-coach-card">
+          <h3>Decision Coach</h3>
+          <div class="decision-coach-grid">
+            <div class="decision-insight warning">
+              <span>Biggest Leak</span>
+              <strong>Revenge Trade</strong>
+              <p>Costing &#8377;8,750. Reduce size or stop trading for 15 minutes after a loss.</p>
+            </div>
+            <div class="decision-insight good">
+              <span>Best Edge</span>
+              <strong>Pullback</strong>
+              <p>100% win rate in sample data. Trade this only when rules are followed.</p>
+            </div>
+            <div class="decision-insight neutral">
+              <span>Next Rule</span>
+              <strong>Skip weak entries</strong>
+              <p>Avoid trades below 1 : 1.5 R:R and review every loss same day.</p>
+            </div>
+          </div>
+        </div>
+        <div class="advanced-card">
+          <h3>Setup Analytics</h3>
+          <div class="setup-row"><span>Breakout</span><span>67% | &#8377;33,150</span></div>
+          <div class="setup-row"><span>Pullback</span><span>100% | &#8377;17,940</span></div>
+        </div>
+        <div class="advanced-card">
+          <h3>Monthly Report Card</h3>
+          <p>Total Trades: <b>7</b></p>
+          <p>Win Rate: <b>57%</b></p>
+          <p>Profit Factor: <b>2.43</b></p>
+        </div>
+        <div class="advanced-card">
+          <h3>Trader Score</h3>
+          <h1>76/100</h1>
+          <p>Good process. Repeat mistakes need control.</p>
+        </div>
+      </div>
+    </section>
+
+    <div class="journal-card full-width-card">
+      <div class="trade-list-header">
+        <h3>Trade List</h3>
+        <button type="button" class="export-btn" onclick="openLoginPopup()">Login to Export</button>
+      </div>
+      <div class="preview-trade-list">
+        <div class="trade-table-header">
+          <div>Trade</div><div>Date</div><div>Setup</div><div>Direction</div><div>Entry</div><div>SL</div><div>Target</div><div>P&L</div><div>R:R</div><div>Mistake</div><div>Rules</div><div>Action</div>
+        </div>
+        <div class="trade-table-row">
+          <div><strong>NIFTY</strong><small>Options | 13:05</small></div><div>2026-06-19</div><div>Pullback</div><div>Long</div><div>&#8377;120</div><div>&#8377;110</div><div>&#8377;150</div><div class="profit">&#8377;17,940</div><div>1 : 3.00</div><div>No Mistake</div><div>Yes</div><div><button type="button" onclick="openLoginPopup()">Unlock</button></div>
+        </div>
+        <div class="trade-table-row">
+          <div><strong>NIFTY</strong><small>Options | 10:44</small></div><div>2026-06-14</div><div>Breakout</div><div>Long</div><div>&#8377;425</div><div>&#8377;375</div><div>&#8377;525</div><div class="loss">-&#8377;8,750</div><div>1 : 2.00</div><div>Revenge Trade</div><div>Yes</div><div><button type="button" onclick="openLoginPopup()">Unlock</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
 
 <section class="journal reveal" id="journal">
 
@@ -71,12 +259,51 @@ Built for traders who want clear records, clean review, and better discipline.
       <p>Track trades, psychology, mistakes, P&L, rules, screenshots, and execution quality.</p>
     </div>
 
-    <button type="button" class="add-day-btn" onclick="openTradeModal()">
-      + Add Trading Day
-    </button>
+    <div class="app-top-actions">
+      <button type="button" class="customize-btn" onclick="toggleCustomizePanel()">Customize</button>
+      <button type="button" class="add-day-btn" onclick="openTradeModal()">+ Add Trade</button>
+      <button type="button" class="profile-pill" onclick="toggleProfileMenu()">
+        <span id="appProfileAvatar">T</span>
+      </button>
+      <div class="profile-menu" id="profileMenu">
+        <div>
+          <strong id="profileMenuName">Trader</strong>
+          <small id="profileMenuEmail">Logged in</small>
+        </div>
+        <button type="button" onclick="openProfileModal(); toggleProfileMenu(false);">Profile</button>
+        <button type="button" onclick="openProfileModal(); renderProfileEdit(); toggleProfileMenu(false);">Settings</button>
+        <button type="button" class="danger" onclick="logoutCurrentUser()">Sign out</button>
+      </div>
+    </div>
   </div>
 
-  <div class="journal-filters">
+  <div class="customize-panel" id="customizePanel">
+    <div>
+      <h3>Customize Dashboard</h3>
+      <p>Choose a simple layout. Widgets will not be removed from the dashboard.</p>
+    </div>
+    <button type="button" onclick="setDashboardLayout('default')">Default</button>
+    <button type="button" onclick="setDashboardLayout('compact')">Compact</button>
+    <button type="button" onclick="setDashboardLayout('wide-calendar')">Wide Calendar</button>
+  </div>
+
+  <div class="monthly-target-widget" id="monthlyTargetWidget" data-widget="monthlyTargetWidget">
+    <div class="target-icon">₹</div>
+    <div class="target-content">
+      <span>Monthly Target</span>
+      <strong id="monthlyTargetTitle">Set your monthly profit target</strong>
+      <p id="monthlyTargetMeta">Add a target to track monthly progress.</p>
+      <div class="target-progress">
+        <i id="monthlyTargetBar"></i>
+      </div>
+    </div>
+    <div class="target-input-box" id="monthlyTargetInputBox">
+      <input id="quickMonthlyTarget" type="number" min="0" step="100" placeholder="Target amount">
+      <button type="button" onclick="saveQuickMonthlyTarget()">Save Target</button>
+    </div>
+  </div>
+
+  <div class="journal-filters" id="journalFiltersWidget" data-widget="journalFiltersWidget">
     <input id="tradeSearch" type="text" placeholder="Search symbol / setup">
     <select id="directionFilter">
       <option value="">All Direction</option>
@@ -99,7 +326,7 @@ Built for traders who want clear records, clean review, and better discipline.
     <input id="dateToFilter" type="date" class="custom-date-filter">
   </div>
 
-  <div class="tracker-card dashboard-hero-card">
+  <div class="tracker-card dashboard-hero-card" id="liveTrackerWidget" data-widget="liveTrackerWidget">
     <h3>Live Tracker</h3>
 
     <div class="tracker-grid">
@@ -109,7 +336,7 @@ Built for traders who want clear records, clean review, and better discipline.
       </div>
       <div>
         <span>Total P&L</span>
-        <strong id="totalPnl">?0</strong>
+        <strong id="totalPnl">&#8377;0</strong>
       </div>
       <div>
         <span>Win Rate</span>
@@ -122,7 +349,7 @@ Built for traders who want clear records, clean review, and better discipline.
     </div>
   </div>
 
-  <div id="processWarning" class="process-warning">
+  <div id="processWarning" class="process-warning" data-widget="processWarningWidget">
     Add a trade to get process feedback.
   </div>
 
@@ -139,7 +366,7 @@ Built for traders who want clear records, clean review, and better discipline.
       <div class="analytics-hero">
         <div>
           <span>Net P&L</span>
-          <strong id="heroPnl">?0</strong>
+          <strong id="heroPnl">&#8377;0</strong>
         </div>
         <div>
           <span>Win Rate</span>
@@ -161,17 +388,17 @@ Built for traders who want clear records, clean review, and better discipline.
   <div class="rule-cost-grid">
     <div>
       <span>Rules Followed P&L</span>
-      <strong id="rulesFollowedPnl">?0</strong>
+      <strong id="rulesFollowedPnl">&#8377;0</strong>
     </div>
 
     <div>
       <span>Rules Broken P&L</span>
-      <strong id="rulesBrokenPnl">?0</strong>
+      <strong id="rulesBrokenPnl">&#8377;0</strong>
     </div>
 
     <div>
       <span>Rule Break Cost</span>
-      <strong id="ruleBreakCost">?0</strong>
+      <strong id="ruleBreakCost">&#8377;0</strong>
     </div>
   </div>
 
@@ -179,16 +406,20 @@ Built for traders who want clear records, clean review, and better discipline.
 </div>
       <div class="analytics-grid-pro">
         <div class="metric-card">
-          <span>Total Trades</span>
+          <span>Total Trades (Entries)</span>
           <strong id="proTotalTrades">0</strong>
+        </div>
+        <div class="metric-card">
+          <span>Trading Days</span>
+          <strong id="proTradingDays">0</strong>
         </div>
         <div class="metric-card duplicate-metric">
           <span>Best Trade</span>
-          <strong id="proBestTrade">?0</strong>
+          <strong id="proBestTrade">&#8377;0</strong>
         </div>
         <div class="metric-card duplicate-metric">
           <span>Worst Trade</span>
-          <strong id="proWorstTrade">?0</strong>
+          <strong id="proWorstTrade">&#8377;0</strong>
         </div>
         <div class="metric-card duplicate-metric">
           <span>Rules Followed</span>
@@ -202,6 +433,7 @@ Built for traders who want clear records, clean review, and better discipline.
           <span>Red Days</span>
           <strong id="proRedDays">0</strong>
         </div>
+        <p class="trade-day-note" id="tradeDayExplanation">0 trade entries over 0 trading days.</p>
       </div>
 
     </div>
@@ -225,7 +457,7 @@ Built for traders who want clear records, clean review, and better discipline.
       <div class="summary-grid">
         <div>
           <span>This Week P&L</span>
-          <strong id="weekPnl">?0</strong>
+          <strong id="weekPnl">&#8377;0</strong>
         </div>
         <div>
           <span>Weekly Win Rate</span>
@@ -233,11 +465,11 @@ Built for traders who want clear records, clean review, and better discipline.
         </div>
         <div>
           <span>Weekly Max Drawdown</span>
-          <strong id="weekMaxDrawdown">?0</strong>
+          <strong id="weekMaxDrawdown">&#8377;0</strong>
         </div>
         <div>
           <span>This Month P&L</span>
-          <strong id="monthPnlSummary">?0</strong>
+          <strong id="monthPnlSummary">&#8377;0</strong>
         </div>
         <div>
           <span>Monthly Win Rate</span>
@@ -245,7 +477,7 @@ Built for traders who want clear records, clean review, and better discipline.
         </div>
         <div>
           <span>Monthly Max Drawdown</span>
-          <strong id="monthMaxDrawdown">?0</strong>
+          <strong id="monthMaxDrawdown">&#8377;0</strong>
         </div>
       </div>
       <div id="summaryInsights" class="summary-insights">
@@ -260,12 +492,82 @@ Built for traders who want clear records, clean review, and better discipline.
       </div>
     </div>
 
-    <div class="journal-card">
+    <div class="journal-card trade-replay-widget" hidden>
       <h3>Trade Replay Card</h3>
       <div id="tradeReplay">
         <p class="empty-text">Save a trade to view replay.</p>
       </div>
     </div>
+
+    <!-- ================= ADVANCED JOURNAL ANALYTICS START ================= -->
+    <section class="advanced-analytics-section" id="advancedAnalyticsWidget" data-widget="advancedAnalyticsWidget">
+      <h2>Advanced Journal Analytics</h2>
+
+      <div class="advanced-grid">
+
+        <div class="advanced-card decision-coach-card">
+          <h3>Decision Coach</h3>
+          <div id="decisionCoachBox" class="decision-coach-grid">
+            <div class="decision-insight neutral">
+              <span>Waiting for data</span>
+              <strong>Add trades to unlock decisions</strong>
+              <p>Your journal will show setup edge, weak time slots, mistake cost, and next rules.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="advanced-card duplicate-section">
+          <h3>Rule Break Cost Analyzer</h3>
+          <p>Rules Followed P&L</p>
+          <h2 id="rulesFollowedPnlAdvanced">&#8377;0</h2>
+          <p>Rules Broken P&L</p>
+          <h2 id="rulesBrokenPnlAdvanced">&#8377;0</h2>
+        </div>
+
+        <div class="advanced-card">
+          <h3>Setup Analytics</h3>
+          <div id="setupAnalyticsBox">No setup data yet</div>
+          <div id="setupAnalysis" class="legacy-analytics-box"></div>
+          <ul id="bestSetupList" class="legacy-analytics-list"></ul>
+          <p id="worstSetupWarning" class="legacy-analytics-warning"></p>
+        </div>
+
+        <div class="advanced-card">
+          <h3>Monthly Report Card</h3>
+          <p>Total Trades: <b id="monthTotalTrades">0</b></p>
+          <p>Win Rate: <b id="monthWinRate">0%</b></p>
+          <p>Avg Winner: <b id="monthAvgWinner">&#8377;0</b></p>
+          <p>Avg Loser: <b id="monthAvgLoser">&#8377;0</b></p>
+          <p>Profit Factor: <b id="monthProfitFactor">0</b></p>
+        </div>
+
+        <div class="advanced-card">
+          <h3>Best / Worst Trade Review</h3>
+          <p>Best Trade</p>
+          <h2 id="bestTradeBox">&#8377;0</h2>
+          <p>Worst Trade</p>
+          <h2 id="worstTradeBox">&#8377;0</h2>
+        </div>
+
+        <div class="advanced-card">
+          <h3>Trader Score</h3>
+          <h1 id="traderScoreBox">0/100</h1>
+          <p id="traderScoreText">Start journaling to build your score</p>
+        </div>
+
+        <div class="advanced-card">
+          <h3>AI Pattern Detector</h3>
+          <p id="aiPatternBox">No pattern detected yet</p>
+          <ul id="bestTimeList" class="legacy-analytics-list"></ul>
+          <p id="worstTimeWarning" class="legacy-analytics-warning"></p>
+          <ul id="topMistakesList" class="legacy-analytics-list"></ul>
+          <ul id="mistakeCostList" class="legacy-analytics-list"></ul>
+        </div>
+
+      </div>
+      <div id="advancedAnalytics" class="advanced-analytics"></div>
+    </section>
+    <!-- ================= ADVANCED JOURNAL ANALYTICS END ================= -->
 
     <div class="journal-card full-width-card">
       <div class="trade-list-header">
@@ -279,70 +581,12 @@ Built for traders who want clear records, clean review, and better discipline.
     </div>
 
   </div>
-<!-- ================= ADVANCED JOURNAL ANALYTICS START ================= -->
-<section class="advanced-analytics-section">
-  <h2>Advanced Journal Analytics</h2>
-
-  <div class="advanced-grid">
-
-    <div class="advanced-card duplicate-section">
-      <h3>Rule Break Cost Analyzer</h3>
-      <p>Rules Followed P&L</p>
-      <h2 id="rulesFollowedPnlAdvanced">?0</h2>
-      <p>Rules Broken P&L</p>
-      <h2 id="rulesBrokenPnlAdvanced">?0</h2>
-    </div>
-
-    <div class="advanced-card">
-      <h3>Setup Analytics</h3>
-      <div id="setupAnalyticsBox">No setup data yet</div>
-      <div id="setupAnalysis" class="legacy-analytics-box"></div>
-      <ul id="bestSetupList" class="legacy-analytics-list"></ul>
-      <p id="worstSetupWarning" class="legacy-analytics-warning"></p>
-    </div>
-
-    <div class="advanced-card">
-      <h3>Monthly Report Card</h3>
-      <p>Total Trades: <b id="monthTotalTrades">0</b></p>
-      <p>Win Rate: <b id="monthWinRate">0%</b></p>
-      <p>Avg Winner: <b id="monthAvgWinner">?0</b></p>
-      <p>Avg Loser: <b id="monthAvgLoser">?0</b></p>
-      <p>Profit Factor: <b id="monthProfitFactor">0</b></p>
-    </div>
-
-    <div class="advanced-card">
-      <h3>Best / Worst Trade Review</h3>
-      <p>Best Trade</p>
-      <h2 id="bestTradeBox">?0</h2>
-      <p>Worst Trade</p>
-      <h2 id="worstTradeBox">?0</h2>
-    </div>
-
-    <div class="advanced-card">
-      <h3>Trader Score</h3>
-      <h1 id="traderScoreBox">0/100</h1>
-      <p id="traderScoreText">Start journaling to build your score</p>
-    </div>
-
-    <div class="advanced-card">
-      <h3>AI Pattern Detector</h3>
-      <p id="aiPatternBox">No pattern detected yet</p>
-      <ul id="bestTimeList" class="legacy-analytics-list"></ul>
-      <p id="worstTimeWarning" class="legacy-analytics-warning"></p>
-      <ul id="topMistakesList" class="legacy-analytics-list"></ul>
-      <ul id="mistakeCostList" class="legacy-analytics-list"></ul>
-    </div>
-
-  </div>
-  <div id="advancedAnalytics" class="advanced-analytics"></div>
-</section>
-<!-- ================= ADVANCED JOURNAL ANALYTICS END ================= -->
   <div id="tradeModal" class="trade-modal">
     <div class="trade-modal-box">
 
       <div class="modal-header">
         <h3>Add Trade</h3>
-        <button type="button" onclick="closeTradeModal()" class="modal-close">Ã—</button>
+        <button type="button" onclick="closeTradeModal()" class="modal-close" aria-label="Close add trade">X</button>
       </div>
 
       <div class="modal-grid">
@@ -510,15 +754,15 @@ Built for traders who want clear records, clean review, and better discipline.
             <h4>Trade Preview</h4>
             <div>
               <span>Estimated P&L</span>
-              <strong id="previewPnl">?0</strong>
+              <strong id="previewPnl">&#8377;0</strong>
             </div>
             <div>
               <span>Risk</span>
-              <strong id="previewRisk">?0</strong>
+              <strong id="previewRisk">&#8377;0</strong>
             </div>
             <div>
               <span>Reward</span>
-              <strong id="previewReward">?0</strong>
+              <strong id="previewReward">&#8377;0</strong>
             </div>
             <div>
               <span>R:R</span>
@@ -553,157 +797,87 @@ Built for traders who want clear records, clean review, and better discipline.
 
 </section>
 
-<section class="about reveal" id="about">
-  <p class="section-title">About Creator</p>
-  <h2>About Deendayal</h2>
+<section class="about-contact reveal" id="about">
+  <div class="about-contact-inner">
+    <div class="about-widget">
+      <p class="section-title">About Creator</p>
+      <h2>About Deendayal</h2>
 
-  <p>
-    RamPath Journal is being built by Deendayal for traders who want a simple, practical,
-    and honest way to review their trading performance.
-  </p>
+      <p>
+        Deendayal is the creator behind RamPath Journal, built for traders who want clear records,
+        honest review, and a disciplined trading process.
+      </p>
 
-  <p>
-    This website is not mainly about the creator. The main focus is the journal:
-    logging trades, understanding mistakes, improving discipline, and building a better process.
-  </p>
-</section>
+      <p>
+        His background combines market study, finance, engineering discipline, and real trading
+        experience. He is a NISM Certified Research Analyst, holds an MBA in Finance, and has also
+        completed B.Tech in Mechanical Engineering.
+      </p>
 
-<section class="approach reveal" id="features">
+      <p>
+        With trading experience from 2020 to 2026, the focus behind RamPath Journal is practical:
+        help traders log every trade, review mistakes, track psychology, and improve with data instead
+        of guesswork.
+      </p>
 
-  <h2>Journal Features</h2>
-
-  <div class="feature-grid">
-  <div class="card">
-    <h3>01. Complete Trade Entry</h3>
-    <p>
-      Save date, time, symbol, setup, direction, entry, exit, stop loss,
-      target, quantity, and screenshots in one place.
-    </p>
-    <div class="tech-tags">
-      <span>Trade Log</span>
-      <span>Screenshots</span>
-      <span>Risk Data</span>
-    </div>
-  </div>
-
-  <div class="card">
-    <h3>02. Automatic Review Metrics</h3>
-    <p>
-      P&L, risk-reward, win rate, best trade, worst trade, rule breaks,
-      and monthly performance are calculated for faster review.
-    </p>
-    <div class="tech-tags">
-      <span>P&L</span>
-      <span>Win Rate</span>
-      <span>R:R</span>
-    </div>
-  </div>
-
-  <div class="card">
-    <h3>03. Psychology Tracking</h3>
-    <p>
-      Track mistakes, notes, discipline score, emotions, and repeated weak
-      patterns that usually damage consistency.
-    </p>
-    <div class="tech-tags">
-      <span>Mistakes</span>
-      <span>Notes</span>
-      <span>Discipline</span>
-    </div>
-  </div>
-
-    <div class="card">
-    <h3>04. Weekly & Monthly Insights</h3>
-    <p>
-      Use charts, summaries, daily P&L, and journal history to see what is
-      improving and what still needs work.
-    </p>
-    <div class="tech-tags">
-      <span>Charts</span>
-      <span>Summary</span>
-      <span>Review</span>
-    </div>
-  </div>
-  </div>
-</section>
-
-<section class="markets reveal" id="markets">
-  <p class="section-title">Built For</p>
-  <h2>Trade Journal Use Cases</h2>
-
-  <div class="tags">
-    <span>Intraday Trades</span>
-    <span>Options Trades</span>
-    <span>Futures Trades</span>
-    <span>Equity Trades</span>
-    <span>Setup Review</span>
-    <span>Risk Management</span>
-    <span>Mistake Tracking</span>
-    <span>Trading Psychology</span>
-  </div>
-</section>
-
-<section class="skills-section reveal" id="skills">
-  <p class="section-title">Core Skills</p>
-  <h2>What RamPath Helps You Improve</h2>
-
-  <div class="skill-chips">
-    <span>Trade Planning</span>
-    <span>Execution Review</span>
-    <span>Risk Management</span>
-    <span>Position Sizing</span>
-    <span>Rule Discipline</span>
-    <span>Psychology Notes</span>
-    <span>Mistake Reduction</span>
-    <span>Monthly Review</span>
-  </div>
-</section>
-
-  
-  <section class="performance reveal" id="performance">
-  <p class="section-title">Why Journal</p>
-  <h2>Review Beats Guesswork</h2>
-
-  <div class="perf-grid">
-    <div class="perf-card">
-      <h3>Know Your Numbers</h3>
-      <p>See your actual P&L, win rate, drawdown, and risk-reward clearly.</p>
+      <div class="about-credentials compact" aria-label="Creator credentials">
+        <div>
+          <span>NISM</span>
+          <strong>Certified Research Analyst</strong>
+        </div>
+        <div>
+          <span>Finance</span>
+          <strong>MBA Finance</strong>
+        </div>
+        <div>
+          <span>Engineering</span>
+          <strong>B.Tech Mechanical</strong>
+        </div>
+        <div>
+          <span>Trading</span>
+          <strong>6 Years</strong>
+          <small>2020 - 2026</small>
+        </div>
+      </div>
     </div>
 
-    <div class="perf-card">
-      <h3>Catch Repeat Mistakes</h3>
-      <p>Find the setups, times, and habits that create avoidable losses.</p>
-    </div>
+    <div class="contact-card" id="contact">
+      <div class="contact-copy">
+        <p class="section-title">Contact</p>
+        <h2>RamPath Journal Support</h2>
 
-    <div class="perf-card">
-      <h3>Build Discipline</h3>
-      <p>Make every trade part of a review system, not just a random result.</p>
+        <p class="contact-text">
+          Share feedback, report issues, or suggest features you want inside the journal.
+        </p>
+
+        <div class="contact-links">
+          <a href="mailto:deendayalpoonia413@gmail.com">Email Me</a>
+          <a href="https://instagram.com/ddpoonia" target="_blank" rel="noopener noreferrer">Instagram</a>
+          <a href="https://t.me/learner_nb" target="_blank" rel="noopener noreferrer">Telegram</a>
+        </div>
+
+        <div class="contact-highlights">
+          <div>
+            <span>Feedback</span>
+            <strong>Feature ideas</strong>
+          </div>
+          <div>
+            <span>Support</span>
+            <strong>Bug reports</strong>
+          </div>
+        </div>
+      </div>
+
+      <form class="contact-form" action="https://formspree.io/f/xbdbbbjn" method="POST">
+        <input type="hidden" name="_subject" value="New message from RamPath Journal website">
+
+        <input type="text" name="name" placeholder="Your Name" required>
+        <input type="email" name="email" placeholder="Your Email" required>
+        <textarea name="message" placeholder="Your Message" rows="5" required></textarea>
+        <button type="submit">Send Message</button>
+      </form>
     </div>
   </div>
-</section>
-<section class="contact reveal" id="contact">
-  <p class="section-title">Contact</p>
-  <h2>RamPath Journal Support</h2>
-
-  <p class="contact-text">
-    Share feedback, report issues, or suggest features you want inside the journal.
-  </p>
-
-  <div class="contact-links">
-    <a href="mailto:deendayalpoonia413@gmail.com">Email Me</a>
-   <a href="https://instagram.com/ddpoonia" target="_blank" rel="noopener noreferrer">Instagram</a>
-<a href="https://t.me/learner_nb" target="_blank" rel="noopener noreferrer">Telegram</a>
-
-  </div>
-<form class="contact-form" action="https://formspree.io/f/xbdbbbjn" method="POST">
-    <input type="hidden" name="_subject" value="New message from RamPath Journal website">
-
-  <input type="text" name="name" placeholder="Your Name" required>
-  <input type="email" name="email" placeholder="Your Email" required>
-  <textarea name="message" placeholder="Your Message" rows="5" required></textarea>
-  <button type="submit">Send Message</button>
-</form>
-
 </section>
 
 <section class="disclaimer reveal" id="disclaimer">
@@ -785,8 +959,8 @@ Built for traders who want clear records, clean review, and better discipline.
 </div>
 <footer>
   <div class="footer-links">
-    <a href="#journal">Journal</a>
-    <a href="#features">Features</a>
+    <a href="#home">Home</a>
+    <a href="blog.html">Blog</a>
     <a href="#contact">Contact</a>
   </div>
   &copy; <span id="year"></span> RamPath Journal
@@ -796,9 +970,13 @@ Built for traders who want clear records, clean review, and better discipline.
   </small>
 </footer>
 
-<script type="module" src="script.js?v=20260619-hero-profile"></script>
+<script type="module" src="script.js?v=20260619-about-contact-polish"></script>
 </body>
 </html>
+
+
+
+
 
 
 

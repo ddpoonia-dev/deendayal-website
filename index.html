@@ -8,7 +8,7 @@
   <meta name="description" content="RamPath Journal is a focused trade journal dashboard for tracking trades, P&L, psychology, mistakes, rules, and execution quality.">
   <meta name="author" content="RamPath Journal">
   
-  <link rel="stylesheet" href="style.css?v=20260622-pnl-options">
+  <link rel="stylesheet" href="style.css?v=20260622-capital-net-charges">
   <link rel="icon" type="image/png" href="logo.png">
 </head>
 
@@ -303,6 +303,37 @@
     </div>
   </div>
 
+  <div class="capital-widget" id="accountCapitalWidget" data-widget="accountCapitalWidget">
+    <div class="target-icon capital-icon">₹</div>
+    <div class="target-content">
+      <span>Account Capital</span>
+      <strong id="capitalWidgetTitle">Set your starting capital</strong>
+      <p id="capitalWidgetMeta">Capital helps build a real account curve, not only trade P&L.</p>
+      <div class="capital-stats">
+        <div><span>Starting</span><strong id="capitalStartingValue">₹0.00</strong></div>
+        <div><span>Added</span><strong id="capitalAddedValue">₹0.00</strong></div>
+        <div><span>Withdrawn</span><strong id="capitalWithdrawnValue">₹0.00</strong></div>
+        <div><span>Charges</span><strong id="capitalChargesValue">₹0.00</strong></div>
+        <div><span>Return</span><strong id="capitalReturnValue">0%</strong></div>
+      </div>
+    </div>
+    <div class="capital-actions">
+      <div class="target-input-box" id="capitalSetupBox">
+        <input id="quickStartingCapital" type="number" min="0" step="100" placeholder="Starting capital">
+        <button type="button" onclick="saveQuickStartingCapital()">Save Capital</button>
+      </div>
+      <div class="capital-movement-box" id="capitalMovementBox">
+        <select id="capitalMovementType">
+          <option value="add">Capital Added</option>
+          <option value="withdraw">Capital Withdrawn</option>
+        </select>
+        <input id="capitalMovementAmount" type="number" min="0" step="100" placeholder="Amount">
+        <input id="capitalMovementNote" type="text" placeholder="Note optional">
+        <button type="button" onclick="saveCapitalMovement()">Update</button>
+      </div>
+    </div>
+  </div>
+
   <div class="journal-filters" id="journalFiltersWidget" data-widget="journalFiltersWidget">
     <input id="tradeSearch" type="text" placeholder="Search symbol / setup">
     <select id="directionFilter">
@@ -439,7 +470,7 @@
     </div>
 
     <div class="journal-card">
-      <h3>Performance Chart</h3>
+      <h3>Capital / P&L Curve</h3>
       <div class="chart-box">
         <svg id="equityCurve" viewBox="0 0 500 220"></svg>
       </div>
@@ -723,6 +754,27 @@
                 <input id="tradeQty" type="number" placeholder="Quantity / Total Qty">
               </div>
             </div>
+
+            <div class="charges-config-card">
+              <div>
+                <h5>Brokerage & Charges</h5>
+                <p>Auto estimate keeps journal P&L closer to real contract-note P&L.</p>
+              </div>
+              <div class="wizard-field-grid two-col">
+                <div>
+                  <label for="chargesMode" class="field-label">Charges Mode</label>
+                  <select id="chargesMode">
+                    <option value="auto">Auto Estimate</option>
+                    <option value="manual">Manual Total Charges</option>
+                    <option value="none">No Charges</option>
+                  </select>
+                </div>
+                <div>
+                  <label for="manualCharges" class="field-label">Manual Charges</label>
+                  <input id="manualCharges" type="number" min="0" step="0.01" placeholder="Only for manual mode">
+                </div>
+              </div>
+            </div>
           </section>
 
           <section class="trade-step-panel" data-step-panel="3">
@@ -910,8 +962,20 @@
           <div class="trade-preview-box">
             <h4>Trade Preview</h4>
             <div>
-              <span>Estimated P&L</span>
+              <span>Net P&L</span>
               <strong id="previewPnl">&#8377;0</strong>
+            </div>
+            <div>
+              <span>Gross P&L</span>
+              <strong id="previewGrossPnl">&#8377;0</strong>
+            </div>
+            <div>
+              <span>Total Charges</span>
+              <strong id="previewTotalCharges">&#8377;0</strong>
+            </div>
+            <div>
+              <span>Capital After Trade</span>
+              <strong id="previewCapitalAfterTrade">Set capital</strong>
             </div>
             <div>
               <span>Risk</span>
@@ -928,6 +992,11 @@
             <div>
               <span>P&L Formula</span>
               <strong id="previewPnlMode">Exit - Entry</strong>
+            </div>
+            <div class="charges-breakdown" id="previewChargesBreakdown">
+              <span>Brokerage</span><strong>&#8377;0</strong>
+              <span>STT</span><strong>&#8377;0</strong>
+              <span>Taxes</span><strong>&#8377;0</strong>
             </div>
           </div>
 
@@ -1129,7 +1198,7 @@
   </small>
 </footer>
 
-<script type="module" src="script.js?v=20260622-pnl-options"></script>
+<script type="module" src="script.js?v=20260622-capital-net-charges"></script>
 </body>
 </html>
 

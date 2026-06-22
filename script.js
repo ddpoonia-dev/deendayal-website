@@ -94,6 +94,7 @@ async function loadTradesFromFirebase() {
     updateMonthlyDashboard();
     updateAccountBadge(user);
     updateMonthlyTargetWidget();
+    updateAccountCapitalWidget();
 
 console.log("Trades loaded:", trades.length);
 
@@ -475,6 +476,7 @@ async function logoutCurrentUser() {
   updateAccountBadge(null);
   updateHeroAccountButton(null);
   updateMonthlyTargetWidget();
+  updateAccountCapitalWidget();
   setAppMode(null);
   setLoginStatus("Logged out successfully.", "success");
 }
@@ -553,6 +555,175 @@ async function saveQuickMonthlyTarget() {
   });
   updateMonthlyTargetWidget();
   updateAccountBadge(user);
+}
+
+function getCapitalAdjustments() {
+  const raw = currentUserProfile?.capitalAdjustments || currentUserProfile?.capitalMovements || [];
+  if (!Array.isArray(raw)) return [];
+
+  return raw
+    .map((item) => {
+      const rawDate = item.date || item.createdAt?.toDate?.() || item.createdAt || new Date();
+      const date = rawDate instanceof Date ? rawDate.toISOString() : String(rawDate);
+      return {
+        id: item.id || `capital-${date || Date.now()}`,
+        type: item.type === "withdraw" ? "withdraw" : "add",
+        amount: Math.abs(numberFromCurrency(item.amount)),
+        note: item.note || "",
+        date
+      };
+    })
+    .filter((item) => item.amount > 0);
+}
+
+function getStartingCapital() {
+  return numberFromCurrency(currentUserProfile?.startingCapital || currentUserProfile?.accountSize);
+}
+
+function getCapitalSnapshot() {
+  const startingCapital = getStartingCapital();
+  const adjustments = getCapitalAdjustments();
+  const added = adjustments
+    .filter((item) => item.type === "add")
+    .reduce((sum, item) => sum + item.amount, 0);
+  const withdrawn = adjustments
+    .filter((item) => item.type === "withdraw")
+    .reduce((sum, item) => sum + item.amount, 0);
+  const totalCharges = trades.reduce((sum, trade) => sum + getTradeChargesTotal(trade), 0);
+  const grossTradingPnl = trades.reduce((sum, trade) => sum + getTradeGrossPnl(trade), 0);
+  const tradingPnl = trades.reduce((sum, trade) => sum + getTradePnl(trade), 0);
+  const netCapital = startingCapital + added - withdrawn;
+  const currentCapital = netCapital + tradingPnl;
+  const returnPercent = netCapital > 0 ? (tradingPnl / netCapital) * 100 : 0;
+
+  return {
+    startingCapital,
+    adjustments,
+    added,
+    withdrawn,
+    totalCharges,
+    grossTradingPnl,
+    tradingPnl,
+    netCapital,
+    currentCapital,
+    returnPercent
+  };
+}
+
+function updateAccountCapitalWidget() {
+  const widget = document.getElementById("accountCapitalWidget");
+  if (!widget) return;
+
+  const user = auth.currentUser;
+  const title = document.getElementById("capitalWidgetTitle");
+  const meta = document.getElementById("capitalWidgetMeta");
+  const setupBox = document.getElementById("capitalSetupBox");
+  const movementBox = document.getElementById("capitalMovementBox");
+  const quickInput = document.getElementById("quickStartingCapital");
+  const snapshot = getCapitalSnapshot();
+
+  widget.classList.toggle("capital-missing", !snapshot.startingCapital);
+
+  safeText("capitalStartingValue", money(snapshot.startingCapital));
+  safeText("capitalAddedValue", money(snapshot.added));
+  safeText("capitalWithdrawnValue", money(snapshot.withdrawn));
+  safeText("capitalChargesValue", money(snapshot.totalCharges));
+  safeText("capitalReturnValue", `${snapshot.returnPercent.toFixed(2)}%`);
+
+  if (!user) {
+    safeText("capitalWidgetTitle", "Login to track account capital");
+    safeText("capitalWidgetMeta", "Starting capital and withdrawals stay saved in your profile.");
+    if (setupBox) setupBox.style.display = "none";
+    if (movementBox) movementBox.style.display = "none";
+    return;
+  }
+
+  if (!snapshot.startingCapital) {
+    safeText("capitalWidgetTitle", "Set your starting capital");
+    safeText("capitalWidgetMeta", "Add your first account size to build a capital-based P&L curve.");
+    if (setupBox) setupBox.style.display = "grid";
+    if (movementBox) movementBox.style.display = "none";
+    if (quickInput) quickInput.value = "";
+    return;
+  }
+
+  safeText("capitalWidgetTitle", `Current Capital ${money(snapshot.currentCapital)}`);
+  safeText(
+    "capitalWidgetMeta",
+    `Net trading P&L ${money(snapshot.tradingPnl)} after ${money(snapshot.totalCharges)} charges | Base capital ${money(snapshot.netCapital)}`
+  );
+  if (setupBox) setupBox.style.display = "none";
+  if (movementBox) movementBox.style.display = "grid";
+}
+
+async function saveQuickStartingCapital() {
+  const user = auth.currentUser;
+  const input = document.getElementById("quickStartingCapital");
+  if (!user) {
+    openLoginPopup();
+    setLoginStatus("Login first to save your starting capital.", "info");
+    return;
+  }
+
+  const amount = numberFromCurrency(input?.value);
+  if (!amount || amount <= 0) {
+    input?.focus();
+    return;
+  }
+
+  await saveUserProfileData(user, {
+    ...(currentUserProfile || {}),
+    startingCapital: String(amount),
+    accountSize: String(amount),
+    capitalAdjustments: getCapitalAdjustments()
+  });
+
+  updateAccountCapitalWidget();
+  updateEquityCurve();
+  renderProfileView();
+}
+
+async function saveCapitalMovement() {
+  const user = auth.currentUser;
+  const type = document.getElementById("capitalMovementType")?.value === "withdraw" ? "withdraw" : "add";
+  const amountInput = document.getElementById("capitalMovementAmount");
+  const noteInput = document.getElementById("capitalMovementNote");
+
+  if (!user) {
+    openLoginPopup();
+    setLoginStatus("Login first to update capital.", "info");
+    return;
+  }
+
+  const amount = numberFromCurrency(amountInput?.value);
+  if (!amount || amount <= 0) {
+    amountInput?.focus();
+    return;
+  }
+
+  const adjustments = [
+    ...getCapitalAdjustments(),
+    {
+      id: `capital-${Date.now()}`,
+      type,
+      amount,
+      note: noteInput?.value.trim() || "",
+      date: new Date().toISOString()
+    }
+  ];
+
+  await saveUserProfileData(user, {
+    ...(currentUserProfile || {}),
+    startingCapital: String(getStartingCapital()),
+    accountSize: String(getStartingCapital()),
+    capitalAdjustments: adjustments
+  });
+
+  if (amountInput) amountInput.value = "";
+  if (noteInput) noteInput.value = "";
+  updateAccountCapitalWidget();
+  updateEquityCurve();
+  renderProfileView();
 }
 
 function setBlogStatus(message = "", type = "") {
@@ -699,6 +870,7 @@ function renderProfileView() {
   const pnl = trades.reduce((sum, trade) => sum + getTradePnl(trade), 0);
   const winners = trades.filter((trade) => getTradePnl(trade) > 0).length;
   const winRate = trades.length ? Math.round((winners / trades.length) * 100) : 0;
+  const capital = getCapitalSnapshot();
   const avatar = profile.photoUrl
     ? `<img src="${escapeHtml(profile.photoUrl)}" alt="${escapeHtml(profile.displayName || profile.name || "Trader")}">`
     : escapeHtml((profile.displayName || profile.name || "T").slice(0, 1).toUpperCase());
@@ -740,6 +912,12 @@ function renderProfileView() {
       <div><span>Strategy</span><strong>${escapeHtml(profile.mainStrategy || "Not set")}</strong></div>
       <div><span>Monthly Target</span><strong>${escapeHtml(profile.monthlyProfitTarget || "Not set")}</strong></div>
       <div><span>Risk / Trade</span><strong>${escapeHtml(profile.riskPerTrade || "Not set")}</strong></div>
+      <div><span>Starting Capital</span><strong>${money(capital.startingCapital)}</strong></div>
+      <div><span>Current Capital</span><strong>${money(capital.currentCapital)}</strong></div>
+      <div><span>Capital Added</span><strong>${money(capital.added)}</strong></div>
+      <div><span>Capital Withdrawn</span><strong>${money(capital.withdrawn)}</strong></div>
+      <div><span>Charges Deducted</span><strong>${money(capital.totalCharges)}</strong></div>
+      <div><span>Gross Trading P&L</span><strong>${money(capital.grossTradingPnl)}</strong></div>
     </div>
     <p class="profile-note">Badge is calculated from your journal discipline score, rules followed, and mistake tracking.</p>
   `;
@@ -760,6 +938,7 @@ function renderProfileEdit() {
   if (!user || !content) return;
 
   const p = currentUserProfile || {};
+  const startingCapitalValue = p.startingCapital || p.accountSize || "";
   content.innerHTML = `
     <div class="profile-edit-head">
       <div>
@@ -801,7 +980,7 @@ function renderProfileEdit() {
           <label>Risk Per Trade (%)<input name="riskPerTrade" value="${escapeHtml(p.riskPerTrade || "")}"></label>
           <label>Maximum Daily Loss Limit<input name="maxDailyLoss" value="${escapeHtml(p.maxDailyLoss || "")}"></label>
           <label>Annual Goal<input name="annualGoal" value="${escapeHtml(p.annualGoal || "")}"></label>
-          <label>Current Account Size<input name="accountSize" value="${escapeHtml(p.accountSize || "")}"></label>
+          <label>Starting Capital / Account Size<input name="startingCapital" value="${escapeHtml(startingCapitalValue)}"></label>
         </div>
       </section>
 
@@ -860,7 +1039,8 @@ async function saveProfileDetails(event) {
     riskPerTrade: data.get("riskPerTrade")?.trim(),
     maxDailyLoss: data.get("maxDailyLoss")?.trim(),
     annualGoal: data.get("annualGoal")?.trim(),
-    accountSize: data.get("accountSize")?.trim(),
+    startingCapital: data.get("startingCapital")?.trim(),
+    accountSize: data.get("startingCapital")?.trim(),
     mainStrategy: data.get("mainStrategy")?.trim(),
     setupTags: csvToArray(data.get("setupTags")),
     favoriteIndicators: csvToArray(data.get("favoriteIndicators")),
@@ -886,6 +1066,8 @@ async function saveProfileDetails(event) {
     updateAccountBadge(user);
     updateHeroAccountButton(user);
     updateMonthlyTargetWidget();
+    updateAccountCapitalWidget();
+    updateEquityCurve();
     renderProfileView();
   } catch (error) {
     status.textContent = error.message || "Could not save profile.";
@@ -1089,6 +1271,7 @@ window.registerUser = async function () {
     updateAccountBadge(userCredential.user);
     updateHeroAccountButton(userCredential.user);
     updateMonthlyTargetWidget();
+    updateAccountCapitalWidget();
     await loadBlogPostsFromFirebase();
     const shouldOpenTradeModal = pendingTradeModalAfterLogin;
     pendingTradeModalAfterLogin = false;
@@ -1119,6 +1302,7 @@ await loadBlogPostsFromFirebase();
 updateAccountBadge(userCredential.user);
 updateHeroAccountButton(userCredential.user);
 updateMonthlyTargetWidget();
+updateAccountCapitalWidget();
 setAppMode(userCredential.user);
 
 const shouldOpenTradeModal = pendingTradeModalAfterLogin;
@@ -1148,6 +1332,7 @@ onAuthStateChanged(auth, async (user) => {
     updateAccountBadge(user);
     updateHeroAccountButton(user);
     updateMonthlyTargetWidget();
+    updateAccountCapitalWidget();
     updateFloatingAuthButton(user);
 
     loginBtn.onclick = logoutCurrentUser;
@@ -1157,6 +1342,7 @@ onAuthStateChanged(auth, async (user) => {
     updateAccountBadge(user);
     updateHeroAccountButton(user);
     updateMonthlyTargetWidget();
+    updateAccountCapitalWidget();
     updateFloatingAuthButton(user);
 
   } else {
@@ -1182,6 +1368,7 @@ onAuthStateChanged(auth, async (user) => {
     updateAccountBadge(null);
     updateHeroAccountButton(null);
     updateMonthlyTargetWidget();
+    updateAccountCapitalWidget();
     updateFloatingAuthButton(null);
   }
 });
@@ -1260,6 +1447,12 @@ document.getElementById("tradeQty")
 ?.addEventListener("input", updateTradePreview);
 document.getElementById("tradeDirection")
 ?.addEventListener("change", updateTradePreview);
+document.getElementById("tradeSegment")
+?.addEventListener("change", updateTradePreview);
+document.getElementById("chargesMode")
+?.addEventListener("change", updateTradePreview);
+document.getElementById("manualCharges")
+?.addEventListener("input", updateTradePreview);
 function calculateRR() {
 
   const entry =
@@ -1293,24 +1486,119 @@ function calculateTradePnl(entry, exit, qty) {
   return (exit - entry) * qty;
 }
 
+function roundCharge(value) {
+  return Math.round((Number(value) || 0) * 100) / 100;
+}
+
+function calculateTradeCharges({ entry, exit, qty, segment, mode, manualCharges }) {
+  const empty = {
+    mode: mode || "auto",
+    brokerage: 0,
+    stt: 0,
+    exchangeTxn: 0,
+    sebi: 0,
+    gst: 0,
+    stampDuty: 0,
+    total: 0,
+    pointsToBreakeven: 0
+  };
+
+  if (!entry || !exit || !qty) return empty;
+
+  if (mode === "none") return empty;
+
+  if (mode === "manual") {
+    const total = Math.max(0, roundCharge(manualCharges));
+    return {
+      ...empty,
+      mode: "manual",
+      total,
+      pointsToBreakeven: qty ? roundCharge(total / qty) : 0
+    };
+  }
+
+  const buyValue = entry * qty;
+  const sellValue = exit * qty;
+  const turnover = buyValue + sellValue;
+  const normalizedSegment = String(segment || "Options").toLowerCase();
+  const isOptions = normalizedSegment.includes("option");
+  const isFutures = normalizedSegment.includes("future");
+  const isEquity = normalizedSegment.includes("equity") || normalizedSegment.includes("stock");
+  const brokerage = isOptions
+    ? 40
+    : Math.min(20, buyValue * 0.0003) + Math.min(20, sellValue * 0.0003);
+  const sttRate = isOptions ? 0.0015 : isFutures ? 0.0005 : 0.00025;
+  const exchangeRate = isOptions ? 0.0003553 : isFutures ? 0.0000183 : 0.0000307;
+  const stampRate = isFutures ? 0.00002 : 0.00003;
+  const stt = sellValue * sttRate;
+  const exchangeTxn = turnover * exchangeRate;
+  const sebi = turnover * 0.000001;
+  const stampDuty = buyValue * stampRate;
+  const gst = (brokerage + exchangeTxn + sebi) * 0.18;
+  const total = roundCharge(brokerage + stt + exchangeTxn + sebi + gst + stampDuty);
+
+  return {
+    mode: "auto",
+    brokerModel: "Zerodha-style NSE estimate",
+    segmentType: isOptions ? "Options" : isFutures ? "Futures" : isEquity ? "Equity Intraday" : "Generic",
+    brokerage: roundCharge(brokerage),
+    stt: roundCharge(stt),
+    exchangeTxn: roundCharge(exchangeTxn),
+    sebi: roundCharge(sebi),
+    gst: roundCharge(gst),
+    stampDuty: roundCharge(stampDuty),
+    total,
+    pointsToBreakeven: qty ? roundCharge(total / qty) : 0
+  };
+}
+
+function renderChargesBreakdown(charges) {
+  const box = document.getElementById("previewChargesBreakdown");
+  if (!box) return;
+
+  box.innerHTML = `
+    <span>Brokerage</span><strong>${money(charges.brokerage)}</strong>
+    <span>STT</span><strong>${money(charges.stt)}</strong>
+    <span>Exchange + SEBI</span><strong>${money(charges.exchangeTxn + charges.sebi)}</strong>
+    <span>GST</span><strong>${money(charges.gst)}</strong>
+    <span>Stamp Duty</span><strong>${money(charges.stampDuty)}</strong>
+    <span>Breakeven Cost</span><strong>${charges.pointsToBreakeven.toFixed(2)} pts</strong>
+  `;
+}
+
 function updateTradePreview() {
   const entry = Number(document.getElementById("tradeEntry").value);
   const sl = Number(document.getElementById("tradeSl").value);
   const target = Number(document.getElementById("tradeTarget").value);
   const exit = Number(document.getElementById("tradeExit").value);
   const qty = Number(document.getElementById("tradeQty").value);
+  const segment = document.getElementById("tradeSegment").value;
+  const chargesMode = document.getElementById("chargesMode")?.value || "auto";
+  const manualCharges = Number(document.getElementById("manualCharges")?.value || 0);
 
   calculateRR();
 
   const risk = entry && sl && qty ? Math.abs(entry - sl) * qty : 0;
   const reward = entry && target && qty ? Math.abs(target - entry) * qty : 0;
-  const pnl = calculateTradePnl(entry, exit, qty);
+  const grossPnl = calculateTradePnl(entry, exit, qty);
+  const charges = calculateTradeCharges({ entry, exit, qty, segment, mode: chargesMode, manualCharges });
+  const pnl = roundCharge(grossPnl - charges.total);
+  const capitalSnapshot = getCapitalSnapshot();
+  const existingTrade = editingTradeId ? trades.find((trade) => trade.id === editingTradeId) : null;
+  const existingPnl = existingTrade ? getTradePnl(existingTrade) : 0;
+  const capitalAfterTrade = capitalSnapshot.startingCapital
+    ? capitalSnapshot.currentCapital - existingPnl + pnl
+    : null;
 
+  safeText("previewGrossPnl", money(grossPnl));
+  safeText("previewTotalCharges", money(charges.total));
   safeText("previewPnl", money(pnl));
+  safeText("previewCapitalAfterTrade", capitalAfterTrade === null ? "Set capital" : money(capitalAfterTrade));
   safeText("previewRisk", money(risk));
   safeText("previewReward", money(reward));
   safeText("previewRR", risk ? `1 : ${(reward / risk).toFixed(2)}` : "0 : 0");
-  safeText("previewPnlMode", "Exit - Entry");
+  safeText("previewPnlMode", "Gross - Charges");
+  renderChargesBreakdown(charges);
 }
 function toggleOptionFields() {
   const segment = document.getElementById("tradeSegment").value;
@@ -1448,7 +1736,18 @@ if (!tradeDate || !entry || !exit || !qty || !direction) {
 }
 
  const finalQty = qty;
- const pnl = calculateTradePnl(entry, exit, finalQty);
+ const grossPnl = calculateTradePnl(entry, exit, finalQty);
+ const chargesMode = document.getElementById("chargesMode")?.value || "auto";
+ const manualCharges = Number(document.getElementById("manualCharges")?.value || 0);
+ const charges = calculateTradeCharges({
+   entry,
+   exit,
+   qty: finalQty,
+   segment,
+   mode: chargesMode,
+   manualCharges
+ });
+ const pnl = roundCharge(grossPnl - charges.total);
 
   const trade = {
     date: tradeDate,
@@ -1495,6 +1794,12 @@ sl: Number(document.getElementById("slRating").value),
 emotion: Number(document.getElementById("emotionRating").value),
 risk: Number(document.getElementById("riskRating").value),
 entryRating: Number(document.getElementById("entryRating").value),
+    grossPnl,
+    chargesMode,
+    manualCharges: chargesMode === "manual" ? charges.total : 0,
+    chargesTotal: charges.total,
+    chargesBreakdown: charges,
+    netPnl: pnl,
     pnl: pnl,
     rules: document.getElementById("rulesFollowed").checked,
     disciplineScore: calculateDisciplineScore(),
@@ -1565,6 +1870,7 @@ return;
   updatePeriodSummary();
   updatePsychologyVerdict();
   updateMonthlyTargetWidget();
+  updateAccountCapitalWidget();
  showProcessWarning(trade);
 resetTradeForm();
 document.getElementById("entryReason").value = "";
@@ -2365,20 +2671,41 @@ function updateEquityCurve() {
   if (!chart) return;
   chart.innerHTML = "";
 
-  if (!trades.length) {
-    chart.innerHTML = `<text x="250" y="112" text-anchor="middle" class="chart-empty-label">Performance will appear here</text>`;
-    return;
-  }
-
-  let runningTotal = 0;
+  const capital = getCapitalSnapshot();
   const orderedTrades = [...trades].sort((a, b) => {
     const aTime = new Date(`${getTradeDateKey(a) || "1970-01-01"}T${a.time || a.tradeTime || "00:00"}`).getTime();
     const bTime = new Date(`${getTradeDateKey(b) || "1970-01-01"}T${b.time || b.tradeTime || "00:00"}`).getTime();
     return aTime - bTime;
   });
-  const points = orderedTrades.map((trade) => {
-    runningTotal += getTradePnl(trade);
-    return runningTotal;
+
+  const capitalEvents = capital.adjustments.map((adjustment) => ({
+    date: new Date(adjustment.date).getTime() || 0,
+    amount: adjustment.type === "withdraw" ? -adjustment.amount : adjustment.amount,
+    label: adjustment.type === "withdraw" ? "Withdraw" : "Add Capital"
+  }));
+
+  const tradeEvents = orderedTrades.map((trade) => ({
+    date: new Date(`${getTradeDateKey(trade) || "1970-01-01"}T${trade.time || trade.tradeTime || "00:00"}`).getTime() || 0,
+    amount: getTradePnl(trade),
+    label: trade.symbol || "Trade"
+  }));
+
+  const events = [...capitalEvents, ...tradeEvents].sort((a, b) => a.date - b.date);
+
+  if (!capital.startingCapital && !events.length) {
+    chart.innerHTML = `<text x="250" y="112" text-anchor="middle" class="chart-empty-label">Set capital or add trades to build curve</text>`;
+    return;
+  }
+
+  let runningTotal = capital.startingCapital;
+  const points = [{ value: runningTotal, label: "Start" }];
+
+  events.forEach((event) => {
+    runningTotal += event.amount;
+    points.push({
+      value: runningTotal,
+      label: event.label
+    });
   });
 
   const width = 500;
@@ -2386,8 +2713,9 @@ function updateEquityCurve() {
   const paddingX = 36;
   const paddingY = 28;
 
-  const min = Math.min(...points, 0);
-  const max = Math.max(...points, 0);
+  const values = points.map((point) => point.value);
+  const min = Math.min(...values, capital.startingCapital);
+  const max = Math.max(...values, capital.startingCapital);
 
   const range = max - min || 1;
 
@@ -2400,7 +2728,7 @@ function updateEquityCurve() {
     return height - paddingY - ((value - min) / range) * (height - paddingY * 2);
   };
 
-  const zeroY = getY(0);
+  const startY = getY(capital.startingCapital);
 
   [0.25, 0.5, 0.75].forEach((ratio) => {
     const y = paddingY + (height - paddingY * 2) * ratio;
@@ -2410,16 +2738,16 @@ function updateEquityCurve() {
   chart.innerHTML += `
     <line
       x1="${paddingX}"
-      y1="${zeroY}"
+      y1="${startY}"
       x2="${width - paddingX}"
-      y2="${zeroY}"
+      y2="${startY}"
       class="equity-zero-line"
     />
   `;
 
   const pathData = points
     .map((point, index) => {
-      return `${index === 0 ? "M" : "L"} ${getX(index)} ${getY(point)}`;
+      return `${index === 0 ? "M" : "L"} ${getX(index)} ${getY(point.value)}`;
     })
     .join(" ");
 
@@ -2437,7 +2765,7 @@ function updateEquityCurve() {
     chart.innerHTML += `
       <circle
         cx="${getX(index)}"
-        cy="${getY(point)}"
+        cy="${getY(point.value)}"
         r="4"
         class="equity-dot"
       ></circle>
@@ -2445,8 +2773,8 @@ function updateEquityCurve() {
   });
 
   chart.innerHTML += `
-    <text x="${paddingX}" y="${height - 8}" class="chart-axis-label">Start</text>
-    <text x="${width - paddingX}" y="${height - 8}" text-anchor="end" class="chart-axis-label">${money(points.at(-1))}</text>
+    <text x="${paddingX}" y="${height - 8}" class="chart-axis-label">${money(points[0].value)}</text>
+    <text x="${width - paddingX}" y="${height - 8}" text-anchor="end" class="chart-axis-label">${money(points.at(-1).value)}</text>
   `;
 }
 
@@ -2736,10 +3064,11 @@ function renderTradeHistory() {
     const symbolMatch = (trade.symbol || "").toLowerCase().includes(searchText);
     const setupMatch = (trade.setup || "").toLowerCase().includes(searchText);
     const directionMatch = !directionValue || trade.direction === directionValue;
+    const tradePnl = getTradePnl(trade);
     const resultMatch =
       !resultValue ||
-      (resultValue === "profit" && trade.pnl >= 0) ||
-      (resultValue === "loss" && trade.pnl < 0);
+      (resultValue === "profit" && tradePnl >= 0) ||
+      (resultValue === "loss" && tradePnl < 0);
 
     return (symbolMatch || setupMatch) && directionMatch && resultMatch && isTradeInDateFilter(trade);
   });
@@ -2755,7 +3084,9 @@ function renderTradeHistory() {
   }
 
   filteredTrades.slice(0, 20).forEach((trade) => {
-    const pnlClass = trade.pnl >= 0 ? "profit" : "loss";
+    const tradePnl = getTradePnl(trade);
+    const chargesTotal = getTradeChargesTotal(trade);
+    const pnlClass = tradePnl >= 0 ? "profit" : "loss";
 
     history.innerHTML += `
       <div class="trade-table-row" onclick="openTradeDetail('${trade.id}')">
@@ -2769,7 +3100,10 @@ function renderTradeHistory() {
         <div>${money(trade.entry)}</div>
         <div>${money(trade.slPrice)}</div>
         <div>${money(trade.targetPrice)}</div>
-        <div class="${pnlClass}">${money(trade.pnl)}</div>
+        <div class="pnl-cell ${pnlClass}">
+          <strong>${money(tradePnl)}</strong>
+          ${chargesTotal ? `<small>Charges ${money(chargesTotal)}</small>` : ""}
+        </div>
         <div>${trade.rrRatio || "0 : 0"}</div>
         <div>${getMistakeText(trade)}</div>
         <div>${trade.rules ? "Yes" : "No"}</div>
@@ -2810,7 +3144,10 @@ function openTradeDetail(tradeId) {
 
   if (!trade || !modal || !content) return;
 
-  const pnlClass = trade.pnl >= 0 ? "profit" : "loss";
+  const netPnl = getTradePnl(trade);
+  const grossPnl = getTradeGrossPnl(trade);
+  const chargesTotal = getTradeChargesTotal(trade);
+  const pnlClass = netPnl >= 0 ? "profit" : "loss";
 
   content.innerHTML = `
     <h3>${trade.symbol || "N/A"} <span>${trade.segment || "N/A"}</span></h3>
@@ -2824,10 +3161,24 @@ function openTradeDetail(tradeId) {
       <div><span>Target</span><strong>${money(trade.targetPrice)}</strong></div>
       <div><span>Exit</span><strong>${money(trade.exit)}</strong></div>
       <div><span>Qty</span><strong>${trade.qty || 0}</strong></div>
-      <div><span>P&L</span><strong class="${pnlClass}">${money(trade.pnl)}</strong></div>
+      <div><span>Gross P&L</span><strong>${money(grossPnl)}</strong></div>
+      <div><span>Charges</span><strong>${money(chargesTotal)}</strong></div>
+      <div><span>Net P&L</span><strong class="${pnlClass}">${money(netPnl)}</strong></div>
       <div><span>R:R</span><strong>${trade.rrRatio || "0 : 0"}</strong></div>
       <div><span>Rules</span><strong>${trade.rules ? "Yes" : "No"}</strong></div>
     </div>
+    ${chargesTotal ? `
+      <div class="detail-note">
+        <strong>Charges Breakdown</strong>
+        <p>
+          Brokerage ${money(trade.chargesBreakdown?.brokerage || 0)} |
+          STT ${money(trade.chargesBreakdown?.stt || 0)} |
+          Exchange + SEBI ${money((trade.chargesBreakdown?.exchangeTxn || 0) + (trade.chargesBreakdown?.sebi || 0))} |
+          GST ${money(trade.chargesBreakdown?.gst || 0)} |
+          Stamp ${money(trade.chargesBreakdown?.stampDuty || 0)}
+        </p>
+      </div>
+    ` : ""}
     <div class="detail-note">
       <strong>Mistakes</strong>
       <p>${getMistakeText(trade)}</p>
@@ -2849,7 +3200,7 @@ function exportTradesCSV() {
     return;
   }
 
-  let csv = "Date,Time,Symbol,Segment,Direction,Entry,SL,Target,Exit,Quantity,RR,Setup,Entry Reason,Mistakes,Rules Followed,Trader Score,Trade Quality,PNL,Note\n";
+  let csv = "Date,Time,Symbol,Segment,Direction,Entry,SL,Target,Exit,Quantity,RR,Setup,Entry Reason,Mistakes,Rules Followed,Trader Score,Trade Quality,Gross PNL,Charges,Net PNL,Note\n";
 
   trades.forEach((trade) => {
 csv +=
@@ -2870,7 +3221,9 @@ csv +=
   `${trade.rules ? "Yes" : "No"},` +
   `${(trade.disciplineScore || 0) * 4},` +
   `${trade.tradeQuality || ""},` +
-  `${trade.pnl || 0},` +
+  `${getTradeGrossPnl(trade)},` +
+  `${getTradeChargesTotal(trade)},` +
+  `${getTradePnl(trade)},` +
   `"${trade.note || ""}"\n`;
   });
 
@@ -2930,6 +3283,8 @@ function editTrade(tradeId) {
     document.getElementById("tradeTarget").value = trade.targetPrice || "";
     document.getElementById("tradeExit").value = trade.exit || "";
     document.getElementById("tradeQty").value = trade.qty || "";
+    document.getElementById("chargesMode").value = trade.chargesMode || "auto";
+    document.getElementById("manualCharges").value = trade.chargesMode === "manual" ? trade.manualCharges || trade.chargesTotal || "" : "";
     document.getElementById("entryReason").value = trade.entryReason || "";
     document.getElementById("tradeSetup").value = trade.setup || "";
     setSelectedValues("tradeMistake", trade.mistakes || trade.mistake || "");
@@ -2961,6 +3316,8 @@ function resetTradeForm() {
   document.getElementById("tradeTarget").value = "";
   document.getElementById("tradeExit").value = "";
   document.getElementById("tradeQty").value = "";
+  document.getElementById("chargesMode").value = "auto";
+  document.getElementById("manualCharges").value = "";
   document.getElementById("tradeSetup").value = "";
   setSelectedValues("tradeMistake", []);
   document.getElementById("rulesFollowed").checked = false;
@@ -3085,6 +3442,8 @@ window.renderProfileView = renderProfileView;
 window.renderProfileEdit = renderProfileEdit;
 window.saveProfileDetails = saveProfileDetails;
 window.saveQuickMonthlyTarget = saveQuickMonthlyTarget;
+window.saveQuickStartingCapital = saveQuickStartingCapital;
+window.saveCapitalMovement = saveCapitalMovement;
 window.saveBlogPost = saveBlogPost;
 window.deleteBlogPost = deleteBlogPost;
 window.clearBlogForm = clearBlogForm;
@@ -3110,7 +3469,15 @@ function updateAdvancedAnalytics() {
 }
 
 function getTradePnl(trade) {
-  return Number(trade.pnl || trade.profitLoss || trade.pl || 0);
+  return Number(trade.netPnl ?? trade.pnl ?? trade.profitLoss ?? trade.pl ?? 0);
+}
+
+function getTradeGrossPnl(trade) {
+  return Number(trade.grossPnl ?? trade.profitLoss ?? trade.pl ?? trade.pnl ?? 0);
+}
+
+function getTradeChargesTotal(trade) {
+  return Number(trade.chargesTotal ?? trade.chargesBreakdown?.total ?? 0);
 }
 
 function getTradeDateKey(trade) {

@@ -8,7 +8,7 @@
   <meta name="description" content="RamPath Journal is a focused trade journal dashboard for tracking trades, P&L, psychology, mistakes, rules, and execution quality.">
   <meta name="author" content="RamPath Journal">
   
-  <link rel="stylesheet" href="style.css?v=20260619-about-contact-polish">
+  <link rel="stylesheet" href="style.css?v=20260622-pnl-options">
   <link rel="icon" type="image/png" href="logo.png">
 </head>
 
@@ -240,10 +240,10 @@
           <div>Trade</div><div>Date</div><div>Setup</div><div>Direction</div><div>Entry</div><div>SL</div><div>Target</div><div>P&L</div><div>R:R</div><div>Mistake</div><div>Rules</div><div>Action</div>
         </div>
         <div class="trade-table-row">
-          <div><strong>NIFTY</strong><small>Options | 13:05</small></div><div>2026-06-19</div><div>Pullback</div><div>Long</div><div>&#8377;120</div><div>&#8377;110</div><div>&#8377;150</div><div class="profit">&#8377;17,940</div><div>1 : 3.00</div><div>No Mistake</div><div>Yes</div><div><button type="button" onclick="openLoginPopup()">Unlock</button></div>
+          <div><strong>NIFTY</strong><small>Options | 13:05</small></div><div>19-06-2026</div><div>Pullback</div><div>Long</div><div>&#8377;120</div><div>&#8377;110</div><div>&#8377;150</div><div class="profit">&#8377;17,940</div><div>1 : 3.00</div><div>No Mistake</div><div>Yes</div><div><button type="button" onclick="openLoginPopup()">Unlock</button></div>
         </div>
         <div class="trade-table-row">
-          <div><strong>NIFTY</strong><small>Options | 10:44</small></div><div>2026-06-14</div><div>Breakout</div><div>Long</div><div>&#8377;425</div><div>&#8377;375</div><div>&#8377;525</div><div class="loss">-&#8377;8,750</div><div>1 : 2.00</div><div>Revenge Trade</div><div>Yes</div><div><button type="button" onclick="openLoginPopup()">Unlock</button></div>
+          <div><strong>NIFTY</strong><small>Options | 10:44</small></div><div>14-06-2026</div><div>Breakout</div><div>Long</div><div>&#8377;425</div><div>&#8377;375</div><div>&#8377;525</div><div class="loss">-&#8377;8,750</div><div>1 : 2.00</div><div>Revenge Trade</div><div>Yes</div><div><button type="button" onclick="openLoginPopup()">Unlock</button></div>
         </div>
       </div>
     </div>
@@ -322,8 +322,8 @@
       <option value="month">This Month</option>
       <option value="custom">Custom Range</option>
     </select>
-    <input id="dateFromFilter" type="date" class="custom-date-filter">
-    <input id="dateToFilter" type="date" class="custom-date-filter">
+    <input id="dateFromFilter" type="text" inputmode="numeric" placeholder="From DD-MM-YYYY" class="custom-date-filter">
+    <input id="dateToFilter" type="text" inputmode="numeric" placeholder="To DD-MM-YYYY" class="custom-date-filter">
   </div>
 
   <div class="tracker-card dashboard-hero-card" id="liveTrackerWidget" data-widget="liveTrackerWidget">
@@ -582,174 +582,331 @@
 
   </div>
   <div id="tradeModal" class="trade-modal">
-    <div class="trade-modal-box">
+    <div class="trade-modal-box trade-wizard-box">
 
-      <div class="modal-header">
-        <h3>Add Trade</h3>
+      <div class="modal-header trade-wizard-header">
+        <div>
+          <p class="wizard-kicker">New Journal Entry</p>
+          <h3>Add Trade</h3>
+          <p class="wizard-subtitle">Log the trade in small steps: setup, risk, psychology, and final review.</p>
+        </div>
         <button type="button" onclick="closeTradeModal()" class="modal-close" aria-label="Close add trade">X</button>
       </div>
 
-      <div class="modal-grid">
+      <div class="trade-stepper" aria-label="Add trade steps">
+        <button type="button" class="active" data-step-trigger="1" onclick="setTradeStep(1)">
+          <span>1</span>
+          <strong>Trade</strong>
+        </button>
+        <button type="button" data-step-trigger="2" onclick="setTradeStep(2)">
+          <span>2</span>
+          <strong>Risk</strong>
+        </button>
+        <button type="button" data-step-trigger="3" onclick="setTradeStep(3)">
+          <span>3</span>
+          <strong>Mindset</strong>
+        </button>
+        <button type="button" data-step-trigger="4" onclick="setTradeStep(4)">
+          <span>4</span>
+          <strong>Review</strong>
+        </button>
+      </div>
 
-        <div>
-          <label for="tradeDate" class="field-label">Trade Date</label>
-          <input id="tradeDate" type="date">
-          <label for="tradeTime" class="field-label">Trade Time</label>
-          <input id="tradeTime" type="time">
-          <input id="tradeSymbol" type="text" placeholder="Symbol / Stock">
+      <div class="trade-wizard-body">
+        <div class="trade-wizard-main">
+          <section class="trade-step-panel active" data-step-panel="1">
+            <div class="step-heading">
+              <span>Step 1</span>
+              <h4>Trade Details</h4>
+              <p>Capture when, what, and direction first.</p>
+            </div>
 
-          <select id="tradeSegment" onchange="toggleOptionFields()">
-            <option value="">Trade Segment</option>
-            <option value="Equity">Equity / Stock</option>
-            <option value="Options">Options</option>
-            <option value="Futures">Futures</option>
-          </select>
+            <div class="wizard-field-grid two-col">
+              <div>
+                <label for="tradeDate" class="field-label">Trade Date</label>
+                <input id="tradeDate" type="text" inputmode="numeric" placeholder="DD-MM-YYYY">
+              </div>
+              <div>
+                <label for="tradeTime" class="field-label">Trade Time</label>
+                <input id="tradeTime" type="time">
+              </div>
+            </div>
 
-          <select id="tradeDirection">
-            <option value="">Trade Direction</option>
-            <option value="Long">Long / Buy</option>
-            <option value="Short">Short / Sell</option>
-          </select>
+            <label for="tradeSymbol" class="field-label">Symbol / Stock</label>
+            <input id="tradeSymbol" type="text" placeholder="Example: NIFTY, SBIN, BANKNIFTY">
 
-          <div id="optionFields" style="display:none;">
-            <select id="optionType">
-              <option value="">Option Type</option>
-              <option value="CE">CE</option>
-              <option value="PE">PE</option>
+            <div class="wizard-field-grid two-col">
+              <div>
+                <label for="tradeSegment" class="field-label">Trade Segment</label>
+                <select id="tradeSegment" onchange="toggleOptionFields()">
+                  <option value="">Trade Segment</option>
+                  <option value="Equity">Equity / Stock</option>
+                  <option value="Options">Options</option>
+                  <option value="Futures">Futures</option>
+                </select>
+              </div>
+              <div>
+                <label for="tradeDirection" class="field-label">Trade Direction</label>
+                <select id="tradeDirection">
+                  <option value="">Trade Direction</option>
+                  <option value="Long">Long / Buy View</option>
+                  <option value="Short">Short / Bearish View</option>
+                </select>
+              </div>
+            </div>
+
+            <div id="optionFields" class="conditional-fields" style="display:none;">
+              <div class="wizard-field-grid three-col">
+                <div>
+                  <label for="optionType" class="field-label">Option Type</label>
+                  <select id="optionType">
+                    <option value="">Option Type</option>
+                    <option value="CE">CE</option>
+                    <option value="PE">PE</option>
+                  </select>
+                </div>
+                <div>
+                  <label for="strikePrice" class="field-label">Strike Price</label>
+                  <input id="strikePrice" type="number" placeholder="Strike Price">
+                </div>
+                <div>
+                  <label for="expiryDate" class="field-label">Expiry Date</label>
+                  <input id="expiryDate" type="text" inputmode="numeric" placeholder="DD-MM-YYYY">
+                </div>
+              </div>
+              <input id="premium" type="hidden">
+              <input id="lotSize" type="hidden">
+              <input id="lots" type="hidden">
+            </div>
+
+            <div id="futureFields" class="conditional-fields" style="display:none;">
+              <label for="futureExpiry" class="field-label">Future Expiry Date</label>
+              <input id="futureExpiry" type="text" inputmode="numeric" placeholder="DD-MM-YYYY">
+              <input id="futureLotSize" type="hidden">
+            </div>
+          </section>
+
+          <section class="trade-step-panel" data-step-panel="2">
+            <div class="step-heading">
+              <span>Step 2</span>
+              <h4>Risk & Position</h4>
+              <p>Entry, stop loss, target, exit, and quantity calculate the trade result.</p>
+            </div>
+
+            <div class="wizard-field-grid three-col">
+              <div>
+                <label for="tradeEntry" class="field-label">Entry Price</label>
+                <input id="tradeEntry" type="number" placeholder="Entry Price">
+              </div>
+              <div>
+                <label for="tradeSl" class="field-label">Stop Loss</label>
+                <input id="tradeSl" type="number" placeholder="Stop Loss">
+              </div>
+              <div>
+                <label for="tradeTarget" class="field-label">Target Price</label>
+                <input id="tradeTarget" type="number" placeholder="Target Price">
+              </div>
+            </div>
+
+            <div class="rr-box wizard-rr-box">
+              Risk Reward Ratio:
+              <strong id="rrRatio">0 : 0</strong>
+            </div>
+
+            <div class="wizard-field-grid two-col">
+              <div>
+                <label for="tradeExit" class="field-label">Exit Price</label>
+                <input id="tradeExit" type="number" placeholder="Exit Price">
+              </div>
+              <div>
+                <label for="tradeQty" class="field-label">Quantity / Total Qty</label>
+                <input id="tradeQty" type="number" placeholder="Quantity / Total Qty">
+              </div>
+            </div>
+          </section>
+
+          <section class="trade-step-panel" data-step-panel="3">
+            <div class="step-heading">
+              <span>Step 3</span>
+              <h4>Setup & Psychology</h4>
+              <p>Record why you entered and how well you followed the process.</p>
+            </div>
+
+            <div class="wizard-field-grid two-col">
+              <div>
+                <label for="entryReason" class="field-label">Why did I enter?</label>
+                <select id="entryReason">
+                  <option value="">Why did I enter?</option>
+                  <option value="Level Breakout">Level Breakout</option>
+                  <option value="Pullback">Pullback</option>
+                  <option value="Reversal">Reversal</option>
+                  <option value="Support Bounce">Support Bounce</option>
+                  <option value="Resistance Rejection">Resistance Rejection</option>
+                  <option value="Trendline Break">Trendline Break</option>
+                  <option value="Retest Entry">Retest Entry</option>
+                  <option value="Opening Range Breakout">Opening Range Breakout</option>
+                  <option value="VWAP Reclaim">VWAP Reclaim</option>
+                  <option value="VWAP Rejection">VWAP Rejection</option>
+                  <option value="Liquidity Sweep">Liquidity Sweep</option>
+                  <option value="Gap Fill">Gap Fill</option>
+                  <option value="News / Event">News / Event</option>
+                  <option value="Planned Trade">Planned Trade</option>
+                  <option value="FOMO Entry">FOMO Entry</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <div>
+                <label for="tradeSetup" class="field-label">Setup Type</label>
+                <select id="tradeSetup">
+                  <option value="">Setup Type</option>
+                  <option value="Breakout">Breakout</option>
+                  <option value="Pullback">Pullback</option>
+                  <option value="Reversal">Reversal</option>
+                  <option value="Opening Range Breakout">Opening Range Breakout</option>
+                  <option value="Support Bounce">Support Bounce</option>
+                  <option value="Resistance Rejection">Resistance Rejection</option>
+                  <option value="VWAP Setup">VWAP Setup</option>
+                  <option value="Trendline Break">Trendline Break</option>
+                  <option value="Retest">Retest</option>
+                  <option value="Liquidity Sweep">Liquidity Sweep</option>
+                  <option value="Range Breakout">Range Breakout</option>
+                  <option value="Gap Setup">Gap Setup</option>
+                  <option value="Momentum">Momentum</option>
+                  <option value="Mean Reversion">Mean Reversion</option>
+                  <option value="Price Action">Price Action</option>
+                  <option value="Scalping">Scalping</option>
+                  <option value="Intraday">Intraday</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+            </div>
+
+            <label class="field-label">Mistakes</label>
+            <div id="mistakeChips" class="mistake-chips wizard-mistake-chips">
+              <label><input type="checkbox" value="No Mistake">No Mistake</label>
+              <label><input type="checkbox" value="FOMO Entry">FOMO</label>
+              <label><input type="checkbox" value="Over Trading">Over Trading</label>
+              <label><input type="checkbox" value="No SL">No SL</label>
+              <label><input type="checkbox" value="Early Exit">Early Exit</label>
+              <label><input type="checkbox" value="Revenge Trade">Revenge</label>
+              <label><input type="checkbox" value="Late Entry">Late Entry</label>
+              <label><input type="checkbox" value="Ignored Trend">Ignored Trend</label>
+            </div>
+            <select id="tradeMistake" multiple size="5" class="hidden-compat-select">
+              <option value="No Mistake">No Mistake</option>
+              <option value="FOMO Entry">FOMO Entry</option>
+              <option value="Over Trading">Over Trading</option>
+              <option value="No SL">No SL</option>
+              <option value="Early Exit">Early Exit</option>
+              <option value="Revenge Trade">Revenge Trade</option>
+              <option value="Late Entry">Late Entry</option>
+              <option value="Ignored Trend">Ignored Trend</option>
             </select>
-            <input id="strikePrice" type="number" placeholder="Strike Price">
-            <label for="expiryDate" class="field-label">Expiry Date</label>
-            <input id="expiryDate" type="date">
-            <input id="premium" type="hidden">
-            <input id="lotSize" type="hidden">
-            <input id="lots" type="hidden">
-          </div>
 
-          <div id="futureFields" style="display:none;">
-            <label for="futureExpiry" class="field-label">Future Expiry Date</label>
-            <input id="futureExpiry" type="date">
-            <input id="futureLotSize" type="hidden">
-          </div>
+            <div class="rating-grid">
+              <div>
+                <label for="planRating">Plan Followed</label>
+                <select id="planRating">
+                  <option value="0">Select Rating</option>
+                  <option value="1">1 - Poor</option>
+                  <option value="2">2 - Weak</option>
+                  <option value="3">3 - Average</option>
+                  <option value="4">4 - Good</option>
+                  <option value="5">5 - Excellent</option>
+                </select>
+              </div>
+              <div>
+                <label for="slRating">Stop Loss Discipline</label>
+                <select id="slRating">
+                  <option value="0">Select Rating</option>
+                  <option value="1">1 - Poor</option>
+                  <option value="2">2 - Weak</option>
+                  <option value="3">3 - Average</option>
+                  <option value="4">4 - Good</option>
+                  <option value="5">5 - Excellent</option>
+                </select>
+              </div>
+              <div>
+                <label for="emotionRating">Emotion Control</label>
+                <select id="emotionRating">
+                  <option value="0">Select Rating</option>
+                  <option value="1">1 - Poor</option>
+                  <option value="2">2 - Weak</option>
+                  <option value="3">3 - Average</option>
+                  <option value="4">4 - Good</option>
+                  <option value="5">5 - Excellent</option>
+                </select>
+              </div>
+              <div>
+                <label for="riskRating">Risk Management</label>
+                <select id="riskRating">
+                  <option value="0">Select Rating</option>
+                  <option value="1">1 - Poor</option>
+                  <option value="2">2 - Weak</option>
+                  <option value="3">3 - Average</option>
+                  <option value="4">4 - Good</option>
+                  <option value="5">5 - Excellent</option>
+                </select>
+              </div>
+              <div>
+                <label for="entryRating">Entry Quality</label>
+                <select id="entryRating">
+                  <option value="0">Select Rating</option>
+                  <option value="1">1 - Poor</option>
+                  <option value="2">2 - Weak</option>
+                  <option value="3">3 - Average</option>
+                  <option value="4">4 - Good</option>
+                  <option value="5">5 - Excellent</option>
+                </select>
+              </div>
+              <div>
+                <label for="tradeQuality">Trade Quality</label>
+                <select id="tradeQuality">
+                  <option value="">Trade Quality</option>
+                  <option value="Winning Trade + Good Process">Winning Trade + Good Process</option>
+                  <option value="Winning Trade + Bad Process">Winning Trade + Bad Process</option>
+                  <option value="Losing Trade + Good Process">Losing Trade + Good Process</option>
+                  <option value="Losing Trade + Bad Process">Losing Trade + Bad Process</option>
+                </select>
+              </div>
+            </div>
 
-          <input id="tradeEntry" type="number" placeholder="Entry Price">
+            <label for="psychologyNote" class="field-label">Trade Note</label>
+            <textarea id="psychologyNote" placeholder="Short note: mindset, execution, learning, or mistake reason"></textarea>
+          </section>
 
-          <input id="tradeSl" type="number" placeholder="Stop Loss">
+          <section class="trade-step-panel" data-step-panel="4">
+            <div class="step-heading">
+              <span>Step 4</span>
+              <h4>Review & Evidence</h4>
+              <p>Final process check before saving the journal entry.</p>
+            </div>
 
-          <input id="tradeTarget" type="number" placeholder="Target Price">
+            <div class="review-check-card">
+              <label class="check-row">
+                <input id="rulesFollowed" type="checkbox">
+                <span>
+                  <strong>Rules Followed</strong>
+                  <small>Tick only if the trade followed your written plan.</small>
+                </span>
+              </label>
+            </div>
 
-          <div class="rr-box">
-            Risk Reward Ratio:
-            <strong id="rrRatio">0 : 0</strong>
-          </div>
+            <div class="screenshot-grid">
+              <label class="upload-card">
+                <span>Before Entry Screenshot</span>
+                <input id="beforeScreenshot" type="file">
+              </label>
 
-          <input id="tradeExit" type="number" placeholder="Exit Price">
-
-          <input id="tradeQty" type="number" placeholder="Quantity / Total Qty">    
-
-          <select id="entryReason">
-            <option value="">Why did I enter?</option>
-            <option value="Level Breakout">Level Breakout</option>
-            <option value="Pullback">Pullback</option>
-            <option value="Reversal">Reversal</option>
-            <option value="FOMO Entry">FOMO Entry</option>
-          </select>
-
-          <select id="tradeSetup">
-            <option value="">Setup Type</option>
-            <option value="Breakout">Breakout</option>
-            <option value="Pullback">Pullback</option>
-            <option value="Reversal">Reversal</option>
-            <option value="Scalping">Scalping</option>
-          </select>
-
-          <label class="field-label">Mistakes</label>
-          <div id="mistakeChips" class="mistake-chips">
-            <label><input type="checkbox" value="No Mistake">No Mistake</label>
-            <label><input type="checkbox" value="FOMO Entry">FOMO</label>
-            <label><input type="checkbox" value="Over Trading">Over Trading</label>
-            <label><input type="checkbox" value="No SL">No SL</label>
-            <label><input type="checkbox" value="Early Exit">Early Exit</label>
-            <label><input type="checkbox" value="Revenge Trade">Revenge</label>
-            <label><input type="checkbox" value="Late Entry">Late Entry</label>
-            <label><input type="checkbox" value="Ignored Trend">Ignored Trend</label>
-          </div>
-          <select id="tradeMistake" multiple size="5" class="hidden-compat-select">
-            <option value="No Mistake">No Mistake</option>
-            <option value="FOMO Entry">FOMO Entry</option>
-            <option value="Over Trading">Over Trading</option>
-            <option value="No SL">No SL</option>
-            <option value="Early Exit">Early Exit</option>
-            <option value="Revenge Trade">Revenge Trade</option>
-            <option value="Late Entry">Late Entry</option>
-            <option value="Ignored Trend">Ignored Trend</option>
-          </select>
+              <label class="upload-card">
+                <span>After Exit Screenshot</span>
+                <input id="afterScreenshot" type="file">
+              </label>
+            </div>
+          </section>
         </div>
 
-        <div>
-          <h3>Psychology Check</h3>
-          <p class="mini-title">Rate yourself honestly from 1 to 5:</p>
-
-          <label>Plan Followed</label>
-          <select id="planRating">
-            <option value="0">Select Rating</option>
-            <option value="1">1 - Poor</option>
-            <option value="2">2 - Weak</option>
-            <option value="3">3 - Average</option>
-            <option value="4">4 - Good</option>
-            <option value="5">5 - Excellent</option>
-          </select>
-
-          <label>Stop Loss Discipline</label>
-          <select id="slRating">
-            <option value="0">Select Rating</option>
-            <option value="1">1 - Poor</option>
-            <option value="2">2 - Weak</option>
-            <option value="3">3 - Average</option>
-            <option value="4">4 - Good</option>
-            <option value="5">5 - Excellent</option>
-          </select>
-
-          <label>Emotion Control</label>
-          <select id="emotionRating">
-            <option value="0">Select Rating</option>
-            <option value="1">1 - Poor</option>
-            <option value="2">2 - Weak</option>
-            <option value="3">3 - Average</option>
-            <option value="4">4 - Good</option>
-            <option value="5">5 - Excellent</option>
-          </select>
-
-          <label>Risk Management</label>
-          <select id="riskRating">
-            <option value="0">Select Rating</option>
-            <option value="1">1 - Poor</option>
-            <option value="2">2 - Weak</option>
-            <option value="3">3 - Average</option>
-            <option value="4">4 - Good</option>
-            <option value="5">5 - Excellent</option>
-          </select>
-
-          <label>Entry Quality</label>
-          <select id="entryRating">
-            <option value="0">Select Rating</option>
-            <option value="1">1 - Poor</option>
-            <option value="2">2 - Weak</option>
-            <option value="3">3 - Average</option>
-            <option value="4">4 - Good</option>
-            <option value="5">5 - Excellent</option>
-          </select>
-
-          <label>Trade Quality</label>
-          <select id="tradeQuality">
-            <option value="">Trade Quality</option>
-            <option value="Winning Trade + Good Process">Winning Trade + Good Process</option>
-            <option value="Winning Trade + Bad Process">Winning Trade + Bad Process</option>
-            <option value="Losing Trade + Good Process">Losing Trade + Good Process</option>
-            <option value="Losing Trade + Bad Process">Losing Trade + Bad Process</option>
-          </select>
-
-          <textarea id="psychologyNote" placeholder="Short note: mindset, execution, learning, or mistake reason"></textarea>
-
+        <aside class="trade-wizard-side">
           <div class="trade-preview-box">
             <h4>Trade Preview</h4>
             <div>
@@ -768,27 +925,27 @@
               <span>R:R</span>
               <strong id="previewRR">0 : 0</strong>
             </div>
+            <div>
+              <span>P&L Formula</span>
+              <strong id="previewPnlMode">Exit - Entry</strong>
+            </div>
           </div>
 
           <div class="mind-score">
             Trader Score: <strong id="disciplineScore">0/100</strong><br>
             Trader Grade: <span id="traderGrade">N/A</span>
           </div>
-        </div>
+
+          <div class="wizard-help-card">
+            <strong>Clean Entry Rule</strong>
+            <p>Save only after entry, SL, target, quantity, mistake, and note are clear enough to review later.</p>
+          </div>
+        </aside>
       </div>
 
-      <div class="modal-footer">
-        <label class="check-row">
-          <input id="rulesFollowed" type="checkbox">
-          Rules Followed
-        </label>
-
-        <label>Before Entry Screenshot</label>
-        <input id="beforeScreenshot" type="file">
-
-        <label>After Exit Screenshot</label>
-        <input id="afterScreenshot" type="file">
-
+      <div class="modal-footer wizard-footer">
+        <button type="button" class="wizard-back-btn" id="tradeStepBackBtn" onclick="previousTradeStep()">Back</button>
+        <button type="button" class="wizard-next-btn" id="tradeStepNextBtn" onclick="nextTradeStep()">Next Step</button>
         <button type="button" id="saveTradeBtn" onclick="saveTrade()">Save Trade</button>
       </div>
 
@@ -919,8 +1076,10 @@
       <button id="authCreateTab" type="button" onclick="setAuthMode('create')">Create Account</button>
     </div>
 
-    <label for="loginName" class="field-label">Name</label>
-    <input id="loginName" type="text" placeholder="Your trading name" autocomplete="name">
+    <div class="auth-name-row" id="authNameRow">
+      <label for="loginName" class="field-label">Name</label>
+      <input id="loginName" type="text" placeholder="Your trading name" autocomplete="name">
+    </div>
 
     <label for="loginEmail" class="field-label">Email</label>
     <input id="loginEmail" type="email" placeholder="your@email.com" autocomplete="email">
@@ -970,7 +1129,7 @@
   </small>
 </footer>
 
-<script type="module" src="script.js?v=20260619-about-contact-polish"></script>
+<script type="module" src="script.js?v=20260622-pnl-options"></script>
 </body>
 </html>
 

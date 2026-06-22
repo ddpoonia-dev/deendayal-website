@@ -485,9 +485,8 @@ function getCurrentMonthPnl() {
   const year = now.getFullYear();
 
   return trades.reduce((sum, trade) => {
-    const rawDate = trade.date || trade.tradeDate || trade.createdAt?.toDate?.();
-    const tradeDate = rawDate instanceof Date ? rawDate : new Date(rawDate);
-    if (Number.isNaN(tradeDate.getTime())) return sum;
+    const tradeDate = getDateFromDateKey(getTradeDateKey(trade));
+    if (!tradeDate) return sum;
     if (tradeDate.getMonth() !== month || tradeDate.getFullYear() !== year) return sum;
     return sum + getTradePnl(trade);
   }, 0);
@@ -568,11 +567,7 @@ function formatBlogDate(value) {
   const rawDate = value?.toDate?.() || value;
   const date = rawDate instanceof Date ? rawDate : new Date(rawDate);
   if (Number.isNaN(date.getTime())) return "Draft";
-  return date.toLocaleDateString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric"
-  });
+  return formatDisplayDate(date);
 }
 
 function renderBlogPosts() {
@@ -1039,16 +1034,19 @@ function setAuthMode(mode = "login") {
   const createBtn = document.getElementById("registerSubmitBtn");
   const password = document.getElementById("loginPassword");
   const nameInput = document.getElementById("loginName");
+  const loginBox = document.querySelector(".login-box");
 
   title && (title.textContent = isCreate ? "Create Your Journal" : "Welcome Back");
   subtitle && (subtitle.textContent = isCreate
     ? "Start a private RamPath account to save and review every trade."
-    : "Login or create your account to sync your private trading journal.");
+    : "Login with your email and password to open your trading journal.");
 
   loginTab?.classList.toggle("active", !isCreate);
   createTab?.classList.toggle("active", isCreate);
   loginBtn?.classList.toggle("muted-action", isCreate);
   createBtn?.classList.toggle("primary-create", isCreate);
+  loginBox?.classList.toggle("login-mode", !isCreate);
+  loginBox?.classList.toggle("create-mode", isCreate);
 
   if (password) {
     password.autocomplete = isCreate ? "new-password" : "current-password";
@@ -1056,7 +1054,9 @@ function setAuthMode(mode = "login") {
 
   if (nameInput) {
     nameInput.required = isCreate;
-    nameInput.placeholder = isCreate ? "Your name is required" : "Optional: update your display name";
+    nameInput.disabled = !isCreate;
+    nameInput.placeholder = "Your trading name";
+    if (!isCreate) nameInput.value = "";
   }
 }
 
@@ -1113,9 +1113,6 @@ window.loginUser = async function () {
     setLoginStatus("Checking account and loading trades...", "info");
     const userCredential = await signInWithEmailAndPassword(auth, credentials.email, credentials.password);
     await loadUserProfile(userCredential.user);
-    if (credentials.name) {
-      await saveUserProfile(userCredential.user, credentials.name);
-    }
 
 await loadTradesFromFirebase();
 await loadBlogPostsFromFirebase();
@@ -1195,6 +1192,7 @@ onAuthStateChanged(auth, async (user) => {
 let trades = [];
 let editingTradeId = null;
 let pendingTradeModalAfterLogin = false;
+let tradeWizardStep = 1;
 
 function calculateDisciplineScore() {
   const plan = Number(document.getElementById("planRating").value);
@@ -1223,23 +1221,23 @@ else {
 const gradeElement = document.getElementById("traderGrade");
 
 if (traderScore >= 95) {
-  gradeElement.innerText = "ðŸ† Elite Trader";
+  gradeElement.innerText = "Elite Discipline Trader";
 }
 
 else if (traderScore >= 85) {
-  gradeElement.innerText = "ðŸ”¥ Professional Trader";
+  gradeElement.innerText = "Professional Trader";
 }
 
 else if (traderScore >= 70) {
-  gradeElement.innerText = "ðŸ“ˆ Consistent Trader";
+  gradeElement.innerText = "Consistent Trader";
 }
 
 else if (traderScore >= 50) {
-  gradeElement.innerText = "âš ï¸ Developing Trader";
+  gradeElement.innerText = "Developing Trader";
 }
 
 else {
-  gradeElement.innerText = "ðŸš¨ Undisciplined Trader";
+  gradeElement.innerText = "Undisciplined Trader";
 }
 
   return score;
@@ -1290,28 +1288,29 @@ function calculateRR() {
     `1 : ${(reward / risk).toFixed(2)}`;
 }
 
+function calculateTradePnl(entry, exit, qty) {
+  if (!entry || !exit || !qty) return 0;
+  return (exit - entry) * qty;
+}
+
 function updateTradePreview() {
   const entry = Number(document.getElementById("tradeEntry").value);
   const sl = Number(document.getElementById("tradeSl").value);
   const target = Number(document.getElementById("tradeTarget").value);
   const exit = Number(document.getElementById("tradeExit").value);
   const qty = Number(document.getElementById("tradeQty").value);
-  const direction = document.getElementById("tradeDirection").value;
 
   calculateRR();
 
   const risk = entry && sl && qty ? Math.abs(entry - sl) * qty : 0;
   const reward = entry && target && qty ? Math.abs(target - entry) * qty : 0;
-  let pnl = 0;
-
-  if (entry && exit && qty && direction) {
-    pnl = direction === "Long" ? (exit - entry) * qty : (entry - exit) * qty;
-  }
+  const pnl = calculateTradePnl(entry, exit, qty);
 
   safeText("previewPnl", money(pnl));
   safeText("previewRisk", money(risk));
   safeText("previewReward", money(reward));
   safeText("previewRR", risk ? `1 : ${(reward / risk).toFixed(2)}` : "0 : 0");
+  safeText("previewPnlMode", "Exit - Entry");
 }
 function toggleOptionFields() {
   const segment = document.getElementById("tradeSegment").value;
@@ -1337,12 +1336,46 @@ function setDefaultTradeDateTime() {
   const now = new Date();
 
   if (dateInput && !dateInput.value) {
-    dateInput.value = now.toISOString().slice(0, 10);
+    dateInput.value = formatDisplayDate(now, "");
   }
 
   if (timeInput && !timeInput.value) {
     timeInput.value = now.toTimeString().slice(0, 5);
   }
+}
+
+function setTradeStep(step = 1) {
+  const totalSteps = 4;
+  tradeWizardStep = Math.max(1, Math.min(totalSteps, Number(step) || 1));
+
+  document.querySelectorAll("[data-step-trigger]").forEach((button) => {
+    const buttonStep = Number(button.dataset.stepTrigger);
+    button.classList.toggle("active", buttonStep === tradeWizardStep);
+    button.classList.toggle("completed", buttonStep < tradeWizardStep);
+  });
+
+  document.querySelectorAll("[data-step-panel]").forEach((panel) => {
+    panel.classList.toggle("active", Number(panel.dataset.stepPanel) === tradeWizardStep);
+  });
+
+  const backBtn = document.getElementById("tradeStepBackBtn");
+  const nextBtn = document.getElementById("tradeStepNextBtn");
+  const footer = document.querySelector(".wizard-footer");
+
+  if (backBtn) backBtn.disabled = tradeWizardStep === 1;
+  if (nextBtn) nextBtn.textContent = tradeWizardStep === totalSteps - 1 ? "Review Trade" : "Next Step";
+  footer?.classList.toggle("is-final", tradeWizardStep === totalSteps);
+
+  const activePanel = document.querySelector(`[data-step-panel="${tradeWizardStep}"]`);
+  activePanel?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+}
+
+function nextTradeStep() {
+  setTradeStep(tradeWizardStep + 1);
+}
+
+function previousTradeStep() {
+  setTradeStep(tradeWizardStep - 1);
 }
 
 function openTradeModal(resetForm = true) {
@@ -1368,6 +1401,9 @@ function openTradeModal(resetForm = true) {
   }
 
   modal.style.display = "flex";
+  setTradeStep(1);
+  updateTradePreview();
+  calculateDisciplineScore();
 }
 
 function closeTradeModal() {
@@ -1376,6 +1412,9 @@ function closeTradeModal() {
 
 window.openTradeModal = openTradeModal;
 window.closeTradeModal = closeTradeModal;
+window.setTradeStep = setTradeStep;
+window.nextTradeStep = nextTradeStep;
+window.previousTradeStep = previousTradeStep;
 
 async function saveTrade() {
  const saveBtn = document.getElementById("saveTradeBtn");
@@ -1397,9 +1436,10 @@ saveBtn.innerText = "Saving...";
   const qty = Number(document.getElementById("tradeQty").value);
   const segment = document.getElementById("tradeSegment").value;
   const direction = document.getElementById("tradeDirection").value;
+  const tradeDate = normalizeDateInput(document.getElementById("tradeDate").value);
 
-if (!entry || !exit || !qty || !direction) {
-    alert("Please fill entry, exit, quantity and direction.");
+if (!tradeDate || !entry || !exit || !qty || !direction) {
+    alert("Please fill trade date in DD-MM-YYYY format, entry, exit, quantity and direction.");
 
     saveBtn.disabled = false;
     saveBtn.innerText = "Save Trade";
@@ -1408,27 +1448,20 @@ if (!entry || !exit || !qty || !direction) {
 }
 
  const finalQty = qty;
-
-let pnl = 0;
-
-if (direction === "Long") {
-  pnl = (exit - entry) * finalQty;
-} else {
-  pnl = (entry - exit) * finalQty;
-}
+ const pnl = calculateTradePnl(entry, exit, finalQty);
 
   const trade = {
-    date: document.getElementById("tradeDate").value,
+    date: tradeDate,
     time: document.getElementById("tradeTime").value,
     symbol: document.getElementById("tradeSymbol").value,
     segment: document.getElementById("tradeSegment").value,
 optionType: document.getElementById("optionType")?.value || "",
 strikePrice: document.getElementById("strikePrice")?.value || "",
-expiryDate: document.getElementById("expiryDate")?.value || "",
+expiryDate: normalizeDateInput(document.getElementById("expiryDate")?.value || ""),
 premium: "",
 lotSize: "",
 lots: "",
-futureExpiry: document.getElementById("futureExpiry")?.value || "",
+futureExpiry: normalizeDateInput(document.getElementById("futureExpiry")?.value || ""),
 futureLotSize: "",
     direction: direction,
     entryReason: document.getElementById("entryReason").value,
@@ -1626,14 +1659,14 @@ function updatePeriodSummary() {
   const currentYear = now.getFullYear();
 
   const weekTrades = trades.filter((trade) => {
-    if (!trade.date) return false;
-    const tradeDate = new Date(trade.date);
+    const tradeDate = getDateFromDateKey(getTradeDateKey(trade));
+    if (!tradeDate) return false;
     return tradeDate >= weekStart && tradeDate <= now;
   });
 
   const monthTrades = trades.filter((trade) => {
-    if (!trade.date) return false;
-    const tradeDate = new Date(trade.date);
+    const tradeDate = getDateFromDateKey(getTradeDateKey(trade));
+    if (!tradeDate) return false;
     return tradeDate.getMonth() === currentMonth && tradeDate.getFullYear() === currentYear;
   });
 
@@ -1676,8 +1709,9 @@ function updatePeriodSummary() {
 
   const dayStats = {};
   monthTrades.forEach((trade) => {
-    if (!trade.date) return;
-    dayStats[trade.date] = (dayStats[trade.date] || 0) + (Number(trade.pnl) || 0);
+    const dateKey = getTradeDateKey(trade);
+    if (!dateKey) return;
+    dayStats[dateKey] = (dayStats[dateKey] || 0) + (Number(trade.pnl) || 0);
   });
 
   const sortedDays = Object.entries(dayStats).sort((a, b) => b[1] - a[1]);
@@ -1708,7 +1742,7 @@ function updatePeriodSummary() {
         </div>
         <div>
           <strong>Best / Worst Day</strong>
-          <p>Best: ${bestDay ? `${bestDay[0]} (${money(bestDay[1])})` : "No data"} | Worst: ${worstDay ? `${worstDay[0]} (${money(worstDay[1])})` : "No data"}</p>
+          <p>Best: ${bestDay ? `${formatDisplayDate(bestDay[0])} (${money(bestDay[1])})` : "No data"} | Worst: ${worstDay ? `${formatDisplayDate(worstDay[0])} (${money(worstDay[1])})` : "No data"}</p>
         </div>
         <div>
           <strong>Focus Point</strong>
@@ -1762,12 +1796,12 @@ function updateMonthlyDashboard() {
   Object.entries(dayStats).forEach(([date, pnl]) => {
     if (pnl > bestDayPnl) {
       bestDayPnl = pnl;
-      bestDay = `${date} ₹${pnl.toFixed(2)}`;
+      bestDay = `${formatDisplayDate(date)} ₹${pnl.toFixed(2)}`;
     }
 
     if (pnl < worstDayPnl) {
       worstDayPnl = pnl;
-      worstDay = `${date} ₹${pnl.toFixed(2)}`;
+      worstDay = `${formatDisplayDate(date)} ₹${pnl.toFixed(2)}`;
     }
   });
 
@@ -2017,7 +2051,7 @@ Object.entries(setupStats).forEach((item) => {
 if (worstSetup) {
 
   worstSetupWarning.innerHTML =
-    `âš ï¸ Warning: ${worstSetup}
+    `Warning: ${worstSetup}
      is currently your worst setup
      (₹${lowestPnl.toFixed(2)})`;
 
@@ -2026,7 +2060,7 @@ if (worstSetup) {
 else {
 
   worstSetupWarning.innerHTML =
-    "âœ… No losing setup detected yet.";
+    "No losing setup detected yet.";
 }
 const bestTimeList = document.getElementById("bestTimeList");
 if (!bestTimeList) return;
@@ -2110,10 +2144,10 @@ Object.entries(timeStats).forEach((item) => {
 
 if (worstTime) {
   worstTimeWarning.innerHTML =
-    `âš ï¸ Warning: ${worstTime} is your weakest time slot (₹${worstTimePnl.toFixed(2)}).`;
+    `Warning: ${worstTime} is your weakest time slot (₹${worstTimePnl.toFixed(2)}).`;
 } else {
   worstTimeWarning.innerHTML =
-    "âœ… No weak time slot detected yet.";
+    "No weak time slot detected yet.";
 }
   document.getElementById("totalTrades").innerText = totalTrades;
   document.getElementById("totalPnl").innerText = money(totalPnl);
@@ -2214,22 +2248,22 @@ function showProcessWarning(trade) {
   const tradeClass = classifyTrade(trade);
 
   if (tradeClass === "Winning Trade + Bad Process") {
-    warningBox.innerText = "âš ï¸ Profit hua, lekin process weak tha. Aise trades repeat mat karo.";
+    warningBox.innerText = "Profit hua, lekin process weak tha. Aise trades repeat mat karo.";
     warningBox.className = "process-warning warning";
   }
 
   else if (tradeClass === "Losing Trade + Good Process") {
-    warningBox.innerText = "âœ… Loss hua, lekin process strong tha. Ye acceptable trading hai.";
+    warningBox.innerText = "Loss hua, lekin process strong tha. Ye acceptable trading hai.";
     warningBox.className = "process-warning good";
   }
 
   else if (tradeClass === "Winning Trade + Good Process") {
-    warningBox.innerText = "ðŸ”¥ Excellent trade. Profit bhi aur process bhi strong.";
+    warningBox.innerText = "Excellent trade. Profit bhi aur process bhi strong.";
     warningBox.className = "process-warning good";
   }
 
   else {
-    warningBox.innerText = "ðŸš¨ Loss bhi hua aur process bhi weak tha. Is trade ko deeply review karo.";
+    warningBox.innerText = "Loss bhi hua aur process bhi weak tha. Is trade ko deeply review karo.";
     warningBox.className = "process-warning danger";
   }
 }
@@ -2247,10 +2281,8 @@ function updateCalendarHeatmap() {
   const dayStats = {};
 
   trades.forEach((trade) => {
-    const rawDate = trade.date || trade.tradeDate || trade.createdAt?.toDate?.();
-    if (!rawDate) return;
-    const d = rawDate instanceof Date ? rawDate : new Date(rawDate);
-    if (Number.isNaN(d.getTime())) return;
+    const d = getDateFromDateKey(getTradeDateKey(trade));
+    if (!d) return;
     if (d.getMonth() !== month || d.getFullYear() !== year) return;
 
     const day = d.getDate();
@@ -2278,13 +2310,14 @@ function updateCalendarHeatmap() {
   for (let day = 1; day <= daysInMonth; day++) {
     const data = dayStats[day];
     let cls = "activity-day no-trade";
-    let info = `${monthName} ${day}: No trade`;
+    const displayDate = formatDisplayDate(`${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`);
+    let info = `${displayDate}: No trade`;
     let details = `<span>No trade</span>`;
 
     if (data) {
       const intensity = Math.max(1, Math.min(4, Math.ceil((Math.abs(data.pnl) / maxAbsPnl) * 4)));
       cls = `activity-day ${data.pnl >= 0 ? "profit" : "loss"} level-${intensity}`;
-      info = `${monthName} ${day}: ${data.trades} trade${data.trades > 1 ? "s" : ""} | P&L ${money(data.pnl)}`;
+      info = `${displayDate}: ${data.trades} trade${data.trades > 1 ? "s" : ""} | P&L ${money(data.pnl)}`;
       details = `<span>${data.trades} trade${data.trades > 1 ? "s" : ""}</span><strong>${money(data.pnl)}</strong>`;
     }
 
@@ -2474,7 +2507,7 @@ function updateDailyPnlChart() {
 
     chart.innerHTML += `
       <rect x="${x}" y="${y}" width="${barWidth}" height="${barHeight}" rx="4" class="${cls}">
-        <title>${date}: ${money(pnl)}</title>
+        <title>${formatDisplayDate(date)}: ${money(pnl)}</title>
       </rect>
       <text x="${x + barWidth / 2}" y="${height - 8}" text-anchor="middle" class="chart-axis-label">${day}</text>
     `;
@@ -2499,9 +2532,7 @@ function updateBestTradeShowcase() {
   showcase.innerHTML = `
     <div class="replay-card">
 
-      <h4>
-        ðŸ† Best Trade Ever
-      </h4>
+      <h4>Best Trade Ever</h4>
 
       <p>
         ${bestTrade.symbol || "N/A"}
@@ -2511,7 +2542,7 @@ function updateBestTradeShowcase() {
 
       <p>
         Date:
-        ${bestTrade.date || "N/A"}
+        ${formatDisplayDate(bestTrade.date)}
       </p>
 
       <p>
@@ -2559,7 +2590,7 @@ function renderDemoTradeRow() {
   return `
     <div class="trade-table-row demo-trade">
       <div><span class="demo-badge">Demo</span><strong>${demo.symbol}</strong><small>${demo.time}</small></div>
-      <div>${new Date().toISOString().slice(0, 10)}</div>
+      <div>${formatDisplayDate(new Date())}</div>
       <div>${demo.setup}</div>
       <div>${demo.direction}</div>
       <div>₹${demo.entry}</div>
@@ -2606,6 +2637,7 @@ function updateTradeReplay(trade) {
       <h4>${trade.symbol || "N/A"} | ${trade.segment || "N/A"}</h4>
 
       <p>Direction: ${trade.direction || "N/A"}</p>
+      <p>Date: ${formatDisplayDate(trade.date)}</p>
       <p>Time: ${trade.time || "No Time"}</p>
       <p>Setup: ${trade.setup || "No Setup"}</p>
       <p>Entry Reason: ${trade.entryReason || "Not Added"}</p>
@@ -2658,9 +2690,10 @@ function renderTradeTableHeader() {
 
 function isTradeInDateFilter(trade) {
   const filter = document.getElementById("dateFilter")?.value || "";
-  if (!filter || !trade.date) return true;
+  if (!filter) return true;
 
-  const tradeDate = new Date(trade.date);
+  const tradeDate = getDateFromDateKey(getTradeDateKey(trade));
+  if (!tradeDate) return false;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -2681,8 +2714,8 @@ function isTradeInDateFilter(trade) {
   if (filter === "custom") {
     const fromValue = document.getElementById("dateFromFilter")?.value;
     const toValue = document.getElementById("dateToFilter")?.value;
-    const from = fromValue ? new Date(fromValue) : null;
-    const to = toValue ? new Date(toValue) : null;
+    const from = fromValue ? getDateFromDateKey(normalizeDateInput(fromValue)) : null;
+    const to = toValue ? getDateFromDateKey(normalizeDateInput(toValue)) : null;
     if (from) from.setHours(0, 0, 0, 0);
     if (to) to.setHours(23, 59, 59, 999);
     return (!from || tradeDate >= from) && (!to || tradeDate <= to);
@@ -2730,7 +2763,7 @@ function renderTradeHistory() {
           <strong>${trade.symbol || "N/A"}</strong>
           <small>${trade.segment || "N/A"} | ${trade.time || "No Time"}</small>
         </div>
-        <div>${trade.date || "N/A"}</div>
+        <div>${formatDisplayDate(trade.date)}</div>
         <div>${trade.setup || "No Setup"}</div>
         <div>${trade.direction || "N/A"}</div>
         <div>${money(trade.entry)}</div>
@@ -2761,6 +2794,15 @@ document.getElementById("dateFilter").addEventListener("change", () => {
 document.getElementById("dateFromFilter").addEventListener("change", renderTradeHistory);
 document.getElementById("dateToFilter").addEventListener("change", renderTradeHistory);
 
+["tradeDate", "expiryDate", "futureExpiry", "dateFromFilter", "dateToFilter"].forEach((id) => {
+  document.getElementById(id)?.addEventListener("blur", (event) => {
+    const normalized = normalizeDateInput(event.target.value);
+    if (normalized) {
+      event.target.value = formatDisplayDate(normalized, "");
+    }
+  });
+});
+
 function openTradeDetail(tradeId) {
   const trade = trades.find((item) => item.id === tradeId);
   const modal = document.getElementById("tradeDetailModal");
@@ -2773,7 +2815,7 @@ function openTradeDetail(tradeId) {
   content.innerHTML = `
     <h3>${trade.symbol || "N/A"} <span>${trade.segment || "N/A"}</span></h3>
     <div class="detail-grid">
-      <div><span>Date</span><strong>${trade.date || "N/A"}</strong></div>
+      <div><span>Date</span><strong>${formatDisplayDate(trade.date)}</strong></div>
       <div><span>Time</span><strong>${trade.time || "N/A"}</strong></div>
       <div><span>Direction</span><strong>${trade.direction || "N/A"}</strong></div>
       <div><span>Setup</span><strong>${trade.setup || "No Setup"}</strong></div>
@@ -2811,7 +2853,7 @@ function exportTradesCSV() {
 
   trades.forEach((trade) => {
 csv +=
-  `${trade.date || ""},` +
+  `${formatDisplayDate(trade.date, "")},` +
   `${trade.time || ""},` +
   `${trade.symbol || ""},` +
   `${trade.segment || ""},` +
@@ -2878,7 +2920,7 @@ function editTrade(tradeId) {
 
     editingTradeId = tradeId;
 
-    document.getElementById("tradeDate").value = trade.date || "";
+    setDisplayDateInput("tradeDate", trade.date || "");
     document.getElementById("tradeTime").value = trade.time || "";
     document.getElementById("tradeSymbol").value = trade.symbol || "";
     document.getElementById("tradeSegment").value = trade.segment || "";
@@ -2899,6 +2941,8 @@ function editTrade(tradeId) {
     document.getElementById("entryRating").value = trade.entryRating || "0";
     document.getElementById("tradeQuality").value = trade.tradeQuality || "";
     document.getElementById("psychologyNote").value = trade.note || "";
+    setDisplayDateInput("expiryDate", trade.expiryDate || "");
+    setDisplayDateInput("futureExpiry", trade.futureExpiry || "");
 
     toggleOptionFields();
     updateTradePreview();
@@ -3073,6 +3117,11 @@ function getTradeDateKey(trade) {
   const rawDate = trade?.date || trade?.tradeDate || trade?.createdAt?.toDate?.();
   if (!rawDate) return "";
 
+  if (typeof rawDate === "string" && /^\d{2}[/-]\d{2}[/-]\d{4}$/.test(rawDate.trim())) {
+    const [day, month, year] = rawDate.trim().split(/[/-]/);
+    return `${year}-${month}-${day}`;
+  }
+
   if (typeof rawDate === "string" && /^\d{4}-\d{2}-\d{2}/.test(rawDate)) {
     return rawDate.slice(0, 10);
   }
@@ -3084,6 +3133,66 @@ function getTradeDateKey(trade) {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+function formatDisplayDate(value, fallback = "N/A") {
+  if (!value) return fallback;
+
+  if (typeof value === "string" && /^\d{2}[/-]\d{2}[/-]\d{4}$/.test(value.trim())) {
+    const [day, month, year] = value.trim().split(/[/-]/);
+    return `${day}-${month}-${year}`;
+  }
+
+  const dateKey = getTradeDateKey({ date: value });
+  if (!dateKey) return fallback;
+
+  const [year, month, day] = dateKey.split("-");
+  return `${day}-${month}-${year}`;
+}
+
+function normalizeDateInput(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    return raw;
+  }
+
+  const ddmmyyyy = raw.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+  if (ddmmyyyy) {
+    const day = ddmmyyyy[1].padStart(2, "0");
+    const month = ddmmyyyy[2].padStart(2, "0");
+    const year = ddmmyyyy[3];
+    const parsed = new Date(Number(year), Number(month) - 1, Number(day));
+
+    if (
+      parsed.getFullYear() === Number(year) &&
+      parsed.getMonth() === Number(month) - 1 &&
+      parsed.getDate() === Number(day)
+    ) {
+      return `${year}-${month}-${day}`;
+    }
+  }
+
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) return "";
+
+  const year = parsed.getFullYear();
+  const month = String(parsed.getMonth() + 1).padStart(2, "0");
+  const day = String(parsed.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function setDisplayDateInput(id, value) {
+  const input = document.getElementById(id);
+  if (input) input.value = formatDisplayDate(value, "");
+}
+
+function getDateFromDateKey(dateKey) {
+  if (!dateKey) return null;
+  const [year, month, day] = dateKey.split("-").map(Number);
+  if (!year || !month || !day) return null;
+  return new Date(year, month - 1, day);
 }
 
 function formatMoney(value) {
@@ -3455,9 +3564,8 @@ function updateMonthlyReportCard() {
   const currentYear = now.getFullYear();
 
   const monthTrades = trades.filter(trade => {
-    if (!trade.date) return false;
-
-    const tradeDate = new Date(trade.date);
+    const tradeDate = getDateFromDateKey(getTradeDateKey(trade));
+    if (!tradeDate) return false;
     return tradeDate.getMonth() === currentMonth && tradeDate.getFullYear() === currentYear;
   });
 

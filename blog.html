@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RamPath Journal | Trading Blog</title>
+  <meta name="description" content="Trading insights, Bhagavad Gita lessons, psychology notes, and risk management blogs from RamPath Journal.">
+  <link rel="stylesheet" href="style.css?v=20260703-activity-view-label-fix">
+  <link rel="icon" type="image/png" href="logo.png">
+</head>
+<body class="blog-page">
+  <header class="blog-page-nav">
+    <a href="index.html#journal" class="blog-logo">
+      <span>R</span>
+      RamPath Journal
+    </a>
+    <div>
+      <a href="index.html#journal">Dashboard</a>
+      <button type="button" id="writeBlogBtn">Write Blog</button>
+    </div>
+  </header>
+
+  <main class="blog-page-main">
+    <section class="blog-page-hero">
+      <p>RamPath Blog</p>
+      <h1>Trading Insights & Lessons</h1>
+      <span>Bhagavad Gita mindset, risk discipline, trade review notes, and practical trading psychology.</span>
+    </section>
+
+    <section class="blog-toolbar">
+      <input id="blogSearchInput" type="search" placeholder="Search blog posts...">
+      <div class="blog-filter-row">
+        <button type="button" data-blog-filter="all" class="active">All</button>
+        <button type="button" data-blog-filter="Bhagavad Gita x Trading">Gita x Trading</button>
+        <button type="button" data-blog-filter="Trading Psychology">Psychology</button>
+        <button type="button" data-blog-filter="Risk Management">Risk</button>
+      </div>
+      <p id="blogPageNotice" class="blog-page-notice"></p>
+    </section>
+
+  <section class="insight-grid" id="blogCards">
+      <p class="empty-text">Loading blog posts...</p>
+    </section>
+  </main>
+
+  <div class="blog-read-modal" id="blogReadModal">
+    <article class="blog-read-box">
+      <button type="button" class="blog-close" id="closeBlogReader">&times;</button>
+      <div class="blog-read-image" id="blogReadImage"></div>
+      <div class="blog-read-content">
+        <div class="blog-read-meta">
+          <span id="blogReadCategory"></span>
+          <small id="blogReadDate"></small>
+        </div>
+        <h2 id="blogReadTitle"></h2>
+        <p class="blog-read-source" id="blogReadSource"></p>
+        <div class="blog-read-body" id="blogReadBody"></div>
+      </div>
+    </article>
+  </div>
+
+  <div class="blog-write-modal" id="blogWriteModal">
+    <form class="blog-write-box" id="blogWriteForm">
+      <button type="button" class="blog-close" id="closeBlogWriter">&times;</button>
+      <span>Write Blog</span>
+      <h2>New Trading Note</h2>
+      <label>Title
+        <input id="blogTitle" type="text" placeholder="Example: Detachment after entry" required>
+      </label>
+      <div class="blog-write-grid">
+        <label>Category
+          <select id="blogCategory">
+            <option>Bhagavad Gita x Trading</option>
+            <option>Trading Psychology</option>
+            <option>Risk Management</option>
+            <option>Daily Lesson</option>
+            <option>General</option>
+          </select>
+        </label>
+        <label>Source / Theme
+          <input id="blogSource" type="text" placeholder="Karma, patience, fear, discipline...">
+        </label>
+      </div>
+      <label>Content
+        <textarea id="blogContent" rows="8" placeholder="Write your blog here..." required></textarea>
+      </label>
+      <p id="blogPageStatus"></p>
+      <div class="blog-write-actions">
+        <button type="button" id="clearBlogForm">Clear</button>
+        <button type="submit">Save Blog</button>
+      </div>
+    </form>
+  </div>
+
+  <script type="module" src="blog.js?v=20260622-ddmmyyyy"></script>
+</body>
+</html>

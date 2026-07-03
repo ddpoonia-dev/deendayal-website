@@ -8,7 +8,7 @@
   <meta name="description" content="RamPath Journal is a focused trade journal dashboard for tracking trades, P&L, psychology, mistakes, rules, and execution quality.">
   <meta name="author" content="RamPath Journal">
   
-  <link rel="stylesheet" href="style.css?v=20260622-capital-net-charges">
+  <link rel="stylesheet" href="style.css?v=20260703-activity-view-label-fix">
   <link rel="icon" type="image/png" href="logo.png">
 </head>
 
@@ -26,7 +26,6 @@
   <div id="navMenu">
   <a href="#home">Home</a>
   <a href="#journal">Journal</a>
-  <a href="blog.html">Blog</a>
   <a href="#about">About Creator</a>
   <a href="#contact">Contact</a>
   <span id="accountBadge" class="account-badge">Guest</span>
@@ -41,7 +40,6 @@
   <button type="button" onclick="openTradeModal()">Add Trade</button>
   <button type="button" onclick="openJournalGate('trades')">Trades</button>
   <button type="button" onclick="openJournalGate('analytics')">Analytics</button>
-  <button type="button" onclick="window.location.href='blog.html'">Blog</button>
   <button type="button" onclick="openProfileModal()">Profile</button>
   <button type="button" class="sidebar-logout" onclick="logoutCurrentUser()">Logout</button>
 </aside>
@@ -260,7 +258,6 @@
     </div>
 
     <div class="app-top-actions">
-      <button type="button" class="customize-btn" onclick="toggleCustomizePanel()">Customize</button>
       <button type="button" class="add-day-btn" onclick="openTradeModal()">+ Add Trade</button>
       <button type="button" class="profile-pill" onclick="toggleProfileMenu()">
         <span id="appProfileAvatar">T</span>
@@ -275,16 +272,6 @@
         <button type="button" class="danger" onclick="logoutCurrentUser()">Sign out</button>
       </div>
     </div>
-  </div>
-
-  <div class="customize-panel" id="customizePanel">
-    <div>
-      <h3>Customize Dashboard</h3>
-      <p>Choose a simple layout. Widgets will not be removed from the dashboard.</p>
-    </div>
-    <button type="button" onclick="setDashboardLayout('default')">Default</button>
-    <button type="button" onclick="setDashboardLayout('compact')">Compact</button>
-    <button type="button" onclick="setDashboardLayout('wide-calendar')">Wide Calendar</button>
   </div>
 
   <div class="monthly-target-widget" id="monthlyTargetWidget" data-widget="monthlyTargetWidget">
@@ -331,6 +318,25 @@
         <input id="capitalMovementNote" type="text" placeholder="Note optional">
         <button type="button" onclick="saveCapitalMovement()">Update</button>
       </div>
+    </div>
+  </div>
+
+  <div class="charges-sheet-section" id="chargesSheetWidget" data-widget="chargesSheetWidget">
+    <div class="charges-sheet-head">
+      <div>
+        <span>Date-wise Charges</span>
+        <strong>Charges Sheet</strong>
+        <p>Gross P&L comes from saved trades. Add exact charges by date to see remaining P&L.</p>
+      </div>
+      <div class="charges-sheet-total">
+        <span>Remaining P&L</span>
+        <strong id="chargesSheetNetTotal">₹0.00</strong>
+        <small id="chargesSheetTotal">Charges ₹0.00</small>
+        <small id="chargesSheetStatus" class="charges-save-status"></small>
+      </div>
+    </div>
+    <div id="chargesSheetTable" class="charges-sheet-table">
+      <p class="charges-sheet-empty">Add trades to create date-wise charge rows.</p>
     </div>
   </div>
 
@@ -755,26 +761,6 @@
               </div>
             </div>
 
-            <div class="charges-config-card">
-              <div>
-                <h5>Brokerage & Charges</h5>
-                <p>Auto estimate keeps journal P&L closer to real contract-note P&L.</p>
-              </div>
-              <div class="wizard-field-grid two-col">
-                <div>
-                  <label for="chargesMode" class="field-label">Charges Mode</label>
-                  <select id="chargesMode">
-                    <option value="auto">Auto Estimate</option>
-                    <option value="manual">Manual Total Charges</option>
-                    <option value="none">No Charges</option>
-                  </select>
-                </div>
-                <div>
-                  <label for="manualCharges" class="field-label">Manual Charges</label>
-                  <input id="manualCharges" type="number" min="0" step="0.01" placeholder="Only for manual mode">
-                </div>
-              </div>
-            </div>
           </section>
 
           <section class="trade-step-panel" data-step-panel="3">
@@ -962,20 +948,8 @@
           <div class="trade-preview-box">
             <h4>Trade Preview</h4>
             <div>
-              <span>Net P&L</span>
+              <span>Trade P&L</span>
               <strong id="previewPnl">&#8377;0</strong>
-            </div>
-            <div>
-              <span>Gross P&L</span>
-              <strong id="previewGrossPnl">&#8377;0</strong>
-            </div>
-            <div>
-              <span>Total Charges</span>
-              <strong id="previewTotalCharges">&#8377;0</strong>
-            </div>
-            <div>
-              <span>Capital After Trade</span>
-              <strong id="previewCapitalAfterTrade">Set capital</strong>
             </div>
             <div>
               <span>Risk</span>
@@ -992,11 +966,6 @@
             <div>
               <span>P&L Formula</span>
               <strong id="previewPnlMode">Exit - Entry</strong>
-            </div>
-            <div class="charges-breakdown" id="previewChargesBreakdown">
-              <span>Brokerage</span><strong>&#8377;0</strong>
-              <span>STT</span><strong>&#8377;0</strong>
-              <span>Taxes</span><strong>&#8377;0</strong>
             </div>
           </div>
 
@@ -1188,7 +1157,6 @@
 <footer>
   <div class="footer-links">
     <a href="#home">Home</a>
-    <a href="blog.html">Blog</a>
     <a href="#contact">Contact</a>
   </div>
   &copy; <span id="year"></span> RamPath Journal
@@ -1198,7 +1166,7 @@
   </small>
 </footer>
 
-<script type="module" src="script.js?v=20260622-capital-net-charges"></script>
+<script type="module" src="script.js?v=20260703-activity-view-label-fix"></script>
 </body>
 </html>
 

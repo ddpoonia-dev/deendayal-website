@@ -21,7 +21,8 @@ import {
   deleteDoc,
   doc,
   updateDoc,
-  setDoc
+  setDoc,
+  deleteField
 } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 
 // Firebase Config
@@ -62,6 +63,73 @@ window.setDoc = setDoc;
 console.log("Firebase Connected Successfully");
 let currentUserProfile = null;
 let blogPosts = [];
+let calendarViewDate = new Date();
+
+const DAILY_CHARGE_DOC_PREFIX = "daily-charge-";
+const ACTIVITY_VIEW_MODE_KEY = "rampathActivityViewMode";
+const ACTIVITY_VIEW_MODES = [
+  ["month", "Month"],
+  ["last3", "Last 3 Months"],
+  ["last12", "Last 1 Year"],
+  ["thisFy", "This Financial Year"],
+  ["lastFy", "Last Financial Year"]
+];
+
+function isAllowedActivityViewMode(mode) {
+  return ACTIVITY_VIEW_MODES.some(([value]) => value === mode);
+}
+
+function getSavedActivityViewMode() {
+  try {
+    const savedMode = localStorage.getItem(ACTIVITY_VIEW_MODE_KEY);
+    return isAllowedActivityViewMode(savedMode) ? savedMode : "month";
+  } catch (error) {
+    return "month";
+  }
+}
+
+let activityViewMode = getSavedActivityViewMode();
+let activityViewMenuOpen = false;
+
+function getDailyChargeDocId(dateKey) {
+  return `${DAILY_CHARGE_DOC_PREFIX}${dateKey}`;
+}
+
+function isDailyChargeRecord(docId, data = {}) {
+  return (
+    data?.recordType === "dailyCharge" ||
+    data?.isDailyCharge === true ||
+    String(docId || "").startsWith(DAILY_CHARGE_DOC_PREFIX)
+  );
+}
+
+function getDailyChargeRecordDate(docId, data = {}) {
+  const rawDate = data?.date || data?.dateKey || String(docId || "").replace(DAILY_CHARGE_DOC_PREFIX, "");
+  return normalizeDateInput(rawDate);
+}
+
+function addDailyChargeToMap(dailyCharges, docId, data = {}) {
+  const dateKey = getDailyChargeRecordDate(docId, data);
+  const amount = numberFromCurrency(data.amount ?? data.charges ?? data.total ?? 0);
+
+  if (!dateKey) return;
+
+  if (amount > 0) {
+    dailyCharges[dateKey] = String(roundCharge(amount));
+  } else {
+    delete dailyCharges[dateKey];
+  }
+}
+
+function addEmbeddedDailyChargeToMap(dailyCharges, data = {}) {
+  const dateKey = normalizeDateInput(data.dailyChargeForDate || data.chargeDate || "");
+  const amount = numberFromCurrency(data.dailyChargeAmount ?? data.dateCharge ?? 0);
+
+  if (dateKey && amount > 0) {
+    dailyCharges[dateKey] = String(roundCharge(amount));
+  }
+}
+
 async function loadTradesFromFirebase() {
     try {
         const user = auth.currentUser;
@@ -73,13 +141,27 @@ async function loadTradesFromFirebase() {
         const snapshot = await getDocs(q);
 
         trades = [];
+        const dailyCharges = {};
 
-        snapshot.forEach((doc) => {
+        snapshot.forEach((snapDoc) => {
+            const data = snapDoc.data();
+
+            if (isDailyChargeRecord(snapDoc.id, data)) {
+                addDailyChargeToMap(dailyCharges, snapDoc.id, data);
+                return;
+            }
+
+            addEmbeddedDailyChargeToMap(dailyCharges, data);
             trades.push({
-                 id: doc.id,
-                ...doc.data()
+                 id: snapDoc.id,
+                ...data
             });
         });
+
+        currentUserProfile = {
+          ...(currentUserProfile || {}),
+          dailyCharges
+        };
 
             updateDashboard();
     renderTradeHistory();
@@ -95,6 +177,7 @@ async function loadTradesFromFirebase() {
     updateAccountBadge(user);
     updateMonthlyTargetWidget();
     updateAccountCapitalWidget();
+    renderChargesSheet();
 
 console.log("Trades loaded:", trades.length);
 
@@ -185,6 +268,43 @@ function selected(value, expected) {
   return value === expected ? "selected" : "";
 }
 
+function normalizeFinancialProfile(profile = {}) {
+  const normalized = { ...profile };
+  const existing = currentUserProfile || {};
+
+  ["monthlyProfitTarget", "startingCapital", "accountSize"].forEach((key) => {
+    if ((normalized[key] === "" || normalized[key] === null || normalized[key] === undefined) && existing[key]) {
+      normalized[key] = existing[key];
+    }
+  });
+
+  if (!normalized.startingCapital && normalized.accountSize) {
+    normalized.startingCapital = normalized.accountSize;
+  }
+
+  if (!normalized.accountSize && normalized.startingCapital) {
+    normalized.accountSize = normalized.startingCapital;
+  }
+
+  if (
+    (!Array.isArray(normalized.capitalAdjustments) || !normalized.capitalAdjustments.length) &&
+    Array.isArray(existing.capitalAdjustments) &&
+    existing.capitalAdjustments.length
+  ) {
+    normalized.capitalAdjustments = existing.capitalAdjustments;
+  }
+
+  if (
+    (!normalized.dailyCharges || typeof normalized.dailyCharges !== "object") &&
+    existing.dailyCharges &&
+    typeof existing.dailyCharges === "object"
+  ) {
+    normalized.dailyCharges = existing.dailyCharges;
+  }
+
+  return normalized;
+}
+
 async function loadUserProfile(user) {
   if (!user) return null;
 
@@ -202,13 +322,13 @@ async function loadUserProfile(user) {
       ...profile
     };
 
-    currentUserProfile = {
+    currentUserProfile = normalizeFinancialProfile({
       ...mergedProfile,
       name: mergedProfile.name || fallbackName,
       displayName: mergedProfile.displayName || mergedProfile.name || fallbackName,
       email: mergedProfile.email || user.email || "",
       createdAt: mergedProfile.createdAt || null
-    };
+    });
 
     cacheUserProfile(user, currentUserProfile);
 
@@ -222,17 +342,28 @@ async function loadUserProfile(user) {
       } catch (saveError) {
         console.error("Initial profile save error:", saveError);
       }
+    } else if (
+      (!profile.startingCapital && currentUserProfile.startingCapital) ||
+      (!profile.accountSize && currentUserProfile.accountSize)
+    ) {
+      setDoc(profileRef, {
+        startingCapital: currentUserProfile.startingCapital || currentUserProfile.accountSize || "",
+        accountSize: currentUserProfile.accountSize || currentUserProfile.startingCapital || "",
+        updatedAt: serverTimestamp()
+      }, { merge: true }).catch((saveError) => {
+        console.warn("Profile capital sync warning:", saveError);
+      });
     }
 
     return currentUserProfile;
   } catch (error) {
     console.error("Profile load error:", error);
-    currentUserProfile = {
+    currentUserProfile = normalizeFinancialProfile({
       ...cachedProfile,
       name: cachedProfile.name || getNameFromEmail(user.email || ""),
       displayName: cachedProfile.displayName || cachedProfile.name || getNameFromEmail(user.email || ""),
       email: cachedProfile.email || user.email || ""
-    };
+    });
     return currentUserProfile;
   }
 }
@@ -240,28 +371,28 @@ async function loadUserProfile(user) {
 async function saveUserProfileData(user, profileData = {}) {
   if (!user) return null;
 
-  const cleanName = (profileData.name || profileData.displayName || "").trim();
+  const normalizedData = normalizeFinancialProfile(profileData);
+  const cleanName = (normalizedData.name || normalizedData.displayName || "").trim();
   const profile = {
-    ...profileData,
+    ...normalizedData,
     name: cleanName || getNameFromEmail(user.email || ""),
-    displayName: (profileData.displayName || cleanName || getNameFromEmail(user.email || "")).trim(),
-    email: (profileData.email || user.email || "").trim(),
+    displayName: (normalizedData.displayName || cleanName || getNameFromEmail(user.email || "")).trim(),
+    email: (normalizedData.email || user.email || "").trim(),
     authEmail: user.email || "",
     updatedAt: serverTimestamp()
   };
-
-  currentUserProfile = {
-    ...(currentUserProfile || {}),
-    ...profile
-  };
-
-  cacheUserProfile(user, currentUserProfile);
 
   try {
     await setDoc(doc(db, "users", user.uid), profile, { merge: true });
   } catch (error) {
     console.error("Profile save error:", error);
+    throw error;
   }
+
+  currentUserProfile = cacheUserProfile(user, {
+    ...(currentUserProfile || {}),
+    ...profile
+  });
 
   return currentUserProfile;
 }
@@ -269,6 +400,38 @@ async function saveUserProfileData(user, profileData = {}) {
 async function saveUserProfile(user, name) {
   if (!user || !name) return null;
   return saveUserProfileData(user, { name, displayName: name, email: user.email || "" });
+}
+
+async function loadDailyChargesFromFirebase(user) {
+  if (!user) return {};
+
+  const dailyCharges = {};
+
+  try {
+    const tradesRef = collection(db, "users", user.uid, "trades");
+    const snapshot = await getDocs(tradesRef);
+
+    snapshot.forEach((snapDoc) => {
+      const data = snapDoc.data();
+
+      if (isDailyChargeRecord(snapDoc.id, data)) {
+        addDailyChargeToMap(dailyCharges, snapDoc.id, data);
+        return;
+      }
+
+      addEmbeddedDailyChargeToMap(dailyCharges, data);
+    });
+
+    currentUserProfile = {
+      ...(currentUserProfile || {}),
+      dailyCharges
+    };
+  } catch (error) {
+    console.error("Daily charges load error:", error);
+    setChargesSheetStatus("Could not load cloud charges from trades.", "error");
+  }
+
+  return dailyCharges;
 }
 
 function getTraderBadge() {
@@ -477,6 +640,7 @@ async function logoutCurrentUser() {
   updateHeroAccountButton(null);
   updateMonthlyTargetWidget();
   updateAccountCapitalWidget();
+  renderChargesSheet();
   setAppMode(null);
   setLoginStatus("Logged out successfully.", "success");
 }
@@ -486,12 +650,13 @@ function getCurrentMonthPnl() {
   const month = now.getMonth();
   const year = now.getFullYear();
 
-  return trades.reduce((sum, trade) => {
+  const monthTrades = trades.filter((trade) => {
     const tradeDate = getDateFromDateKey(getTradeDateKey(trade));
-    if (!tradeDate) return sum;
-    if (tradeDate.getMonth() !== month || tradeDate.getFullYear() !== year) return sum;
-    return sum + getTradePnl(trade);
-  }, 0);
+    if (!tradeDate) return false;
+    return tradeDate.getMonth() === month && tradeDate.getFullYear() === year;
+  });
+
+  return getRemainingPnlForTradeList(monthTrades);
 }
 
 function updateMonthlyTargetWidget() {
@@ -549,12 +714,17 @@ async function saveQuickMonthlyTarget() {
     return;
   }
 
-  await saveUserProfileData(user, {
-    ...(currentUserProfile || {}),
-    monthlyProfitTarget: String(target)
-  });
-  updateMonthlyTargetWidget();
-  updateAccountBadge(user);
+  try {
+    await saveUserProfileData(user, {
+      ...(currentUserProfile || {}),
+      monthlyProfitTarget: String(target)
+    });
+    updateMonthlyTargetWidget();
+    updateAccountBadge(user);
+    setLoginStatus("Monthly target saved to your profile.", "success");
+  } catch (error) {
+    setLoginStatus("Could not save monthly target. Please check Firebase rules or login again.", "error");
+  }
 }
 
 function getCapitalAdjustments() {
@@ -580,6 +750,60 @@ function getStartingCapital() {
   return numberFromCurrency(currentUserProfile?.startingCapital || currentUserProfile?.accountSize);
 }
 
+function getDailyChargesMap() {
+  const raw = currentUserProfile?.dailyCharges;
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  return raw;
+}
+
+function getDailyCharge(dateKey) {
+  return Math.max(0, numberFromCurrency(getDailyChargesMap()[dateKey]));
+}
+
+function getTradeDateKeys(tradeList = trades) {
+  return [...new Set(tradeList.map((trade) => getTradeDateKey(trade)).filter(Boolean))];
+}
+
+function getChargesForTradeList(tradeList = trades) {
+  return getTradeDateKeys(tradeList).reduce((sum, dateKey) => sum + getDailyCharge(dateKey), 0);
+}
+
+function getGrossPnlForTradeList(tradeList = trades) {
+  return tradeList.reduce((sum, trade) => sum + getTradeGrossPnl(trade), 0);
+}
+
+function getRemainingPnlForTradeList(tradeList = trades) {
+  return roundCharge(getGrossPnlForTradeList(tradeList) - getChargesForTradeList(tradeList));
+}
+
+function buildDailyPnlRows(tradeList = trades) {
+  const rows = {};
+
+  tradeList.forEach((trade) => {
+    const dateKey = getTradeDateKey(trade);
+    if (!dateKey) return;
+
+    if (!rows[dateKey]) {
+      rows[dateKey] = {
+        dateKey,
+        grossPnl: 0,
+        charges: getDailyCharge(dateKey),
+        trades: 0
+      };
+    }
+
+    rows[dateKey].grossPnl += getTradeGrossPnl(trade);
+    rows[dateKey].trades++;
+  });
+
+  Object.values(rows).forEach((row) => {
+    row.grossPnl = roundCharge(row.grossPnl);
+    row.netPnl = roundCharge(row.grossPnl - row.charges);
+  });
+
+  return rows;
+}
+
 function getCapitalSnapshot() {
   const startingCapital = getStartingCapital();
   const adjustments = getCapitalAdjustments();
@@ -589,9 +813,9 @@ function getCapitalSnapshot() {
   const withdrawn = adjustments
     .filter((item) => item.type === "withdraw")
     .reduce((sum, item) => sum + item.amount, 0);
-  const totalCharges = trades.reduce((sum, trade) => sum + getTradeChargesTotal(trade), 0);
-  const grossTradingPnl = trades.reduce((sum, trade) => sum + getTradeGrossPnl(trade), 0);
-  const tradingPnl = trades.reduce((sum, trade) => sum + getTradePnl(trade), 0);
+  const totalCharges = getChargesForTradeList(trades);
+  const grossTradingPnl = getGrossPnlForTradeList(trades);
+  const tradingPnl = getRemainingPnlForTradeList(trades);
   const netCapital = startingCapital + added - withdrawn;
   const currentCapital = netCapital + tradingPnl;
   const returnPercent = netCapital > 0 ? (tradingPnl / netCapital) * 100 : 0;
@@ -650,7 +874,7 @@ function updateAccountCapitalWidget() {
   safeText("capitalWidgetTitle", `Current Capital ${money(snapshot.currentCapital)}`);
   safeText(
     "capitalWidgetMeta",
-    `Net trading P&L ${money(snapshot.tradingPnl)} after ${money(snapshot.totalCharges)} charges | Base capital ${money(snapshot.netCapital)}`
+    `Net trading P&L ${money(snapshot.tradingPnl)} after date-wise charges ${money(snapshot.totalCharges)} | Base capital ${money(snapshot.netCapital)}`
   );
   if (setupBox) setupBox.style.display = "none";
   if (movementBox) movementBox.style.display = "grid";
@@ -671,16 +895,21 @@ async function saveQuickStartingCapital() {
     return;
   }
 
-  await saveUserProfileData(user, {
-    ...(currentUserProfile || {}),
-    startingCapital: String(amount),
-    accountSize: String(amount),
-    capitalAdjustments: getCapitalAdjustments()
-  });
+  try {
+    await saveUserProfileData(user, {
+      ...(currentUserProfile || {}),
+      startingCapital: String(amount),
+      accountSize: String(amount),
+      capitalAdjustments: getCapitalAdjustments()
+    });
 
-  updateAccountCapitalWidget();
-  updateEquityCurve();
-  renderProfileView();
+    updateAccountCapitalWidget();
+    updateEquityCurve();
+    renderProfileView();
+    setLoginStatus("Starting capital saved to your profile.", "success");
+  } catch (error) {
+    setLoginStatus("Could not save starting capital. Please check Firebase rules or login again.", "error");
+  }
 }
 
 async function saveCapitalMovement() {
@@ -712,19 +941,195 @@ async function saveCapitalMovement() {
     }
   ];
 
-  await saveUserProfileData(user, {
-    ...(currentUserProfile || {}),
-    startingCapital: String(getStartingCapital()),
-    accountSize: String(getStartingCapital()),
-    capitalAdjustments: adjustments
-  });
+  try {
+    await saveUserProfileData(user, {
+      ...(currentUserProfile || {}),
+      startingCapital: String(getStartingCapital()),
+      accountSize: String(getStartingCapital()),
+      capitalAdjustments: adjustments
+    });
 
-  if (amountInput) amountInput.value = "";
-  if (noteInput) noteInput.value = "";
-  updateAccountCapitalWidget();
-  updateEquityCurve();
-  renderProfileView();
+    if (amountInput) amountInput.value = "";
+    if (noteInput) noteInput.value = "";
+    updateAccountCapitalWidget();
+    updateEquityCurve();
+    renderProfileView();
+    setLoginStatus("Capital update saved to your profile.", "success");
+  } catch (error) {
+    setLoginStatus("Could not update capital. Please check Firebase rules or login again.", "error");
+  }
 }
+
+function renderChargesSheet() {
+  const table = document.getElementById("chargesSheetTable");
+  if (!table) return;
+
+  const rows = Object.values(buildDailyPnlRows(trades))
+    .sort((a, b) => new Date(b.dateKey) - new Date(a.dateKey));
+  const totalCharges = rows.reduce((sum, row) => sum + row.charges, 0);
+  const totalNetPnl = rows.reduce((sum, row) => sum + row.netPnl, 0);
+
+  safeText("chargesSheetNetTotal", money(totalNetPnl));
+  safeText("chargesSheetTotal", `Charges ${money(totalCharges)}`);
+
+  if (!rows.length) {
+    table.innerHTML = `<p class="charges-sheet-empty">Add trades to create date-wise charge rows.</p>`;
+    return;
+  }
+
+  table.innerHTML = `
+    <div class="charges-sheet-row header">
+      <span>Date</span>
+      <span>Gross P&L</span>
+      <span>Charges</span>
+      <span>Remaining P&L</span>
+      <span>Action</span>
+    </div>
+    ${rows.map((row) => `
+      <div class="charges-sheet-row">
+        <div>
+          <strong>${formatDisplayDate(row.dateKey)}</strong>
+          <small>${row.trades} trade${row.trades > 1 ? "s" : ""}</small>
+        </div>
+        <div>
+          <strong class="${row.grossPnl >= 0 ? "profit" : "loss"}">${money(row.grossPnl)}</strong>
+          <small>From trade entries</small>
+        </div>
+        <div>
+          <input id="charge-${row.dateKey}" type="number" min="0" step="0.01" value="${row.charges || ""}" placeholder="Exact charges">
+        </div>
+        <div>
+          <strong class="${row.netPnl >= 0 ? "profit" : "loss"}">${money(row.netPnl)}</strong>
+          <small>Gross - charges</small>
+        </div>
+        <div class="charges-sheet-actions">
+          <button type="button" onclick="saveDailyCharge('${row.dateKey}', this)">Save</button>
+          <button type="button" class="remove-charge-btn" onclick="removeDailyCharge('${row.dateKey}', this)">Remove</button>
+        </div>
+      </div>
+    `).join("")}
+  `;
+}
+
+function setChargesSheetStatus(message = "", type = "") {
+  const status = document.getElementById("chargesSheetStatus");
+  if (!status) return;
+  status.textContent = message;
+  status.className = `charges-save-status ${type}`.trim();
+}
+
+function findChargeCarrierTrade(dateKey) {
+  return trades.find((trade) => {
+    if (!trade?.id || isDailyChargeRecord(trade.id, trade)) return false;
+    return getTradeDateKey(trade) === dateKey;
+  });
+}
+
+async function saveDailyCharge(dateKey, button = null) {
+  const user = auth.currentUser;
+  if (!user) {
+    openLoginPopup();
+    setChargesSheetStatus("Login first to save charges.", "error");
+    return;
+  }
+
+  const input = document.getElementById(`charge-${dateKey}`);
+  const amount = Math.max(0, numberFromCurrency(input?.value));
+  const dailyCharges = { ...getDailyChargesMap() };
+  const oldButtonText = button?.textContent || "";
+
+  if (button) {
+    button.disabled = true;
+    button.textContent = "Saving...";
+  }
+  setChargesSheetStatus("Saving charges to cloud...", "");
+
+  if (amount > 0) {
+    dailyCharges[dateKey] = String(roundCharge(amount));
+  } else {
+    delete dailyCharges[dateKey];
+  }
+
+  try {
+    const chargeRef = doc(db, "users", user.uid, "trades", getDailyChargeDocId(dateKey));
+
+    try {
+      if (amount > 0) {
+        await setDoc(chargeRef, {
+          recordType: "dailyCharge",
+          isDailyCharge: true,
+          date: dateKey,
+          amount: roundCharge(amount),
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        }, { merge: true });
+      } else {
+        await deleteDoc(chargeRef);
+      }
+    } catch (primaryError) {
+      console.warn("Hidden charge document blocked, saving charge on date trade instead:", primaryError);
+      const carrierTrade = findChargeCarrierTrade(dateKey);
+
+      if (!carrierTrade?.id) {
+        throw primaryError;
+      }
+
+      const carrierRef = doc(db, "users", user.uid, "trades", carrierTrade.id);
+
+      if (amount > 0) {
+        await updateDoc(carrierRef, {
+          dailyChargeForDate: dateKey,
+          dailyChargeAmount: roundCharge(amount),
+          dailyChargeUpdatedAt: serverTimestamp()
+        });
+      } else {
+        await updateDoc(carrierRef, {
+          dailyChargeForDate: deleteField(),
+          dailyChargeAmount: deleteField(),
+          dailyChargeUpdatedAt: deleteField()
+        });
+      }
+    }
+
+    currentUserProfile = {
+      ...(currentUserProfile || {}),
+      dailyCharges
+    };
+    refreshFinancialViews();
+    setChargesSheetStatus("Saved to cloud.", "success");
+  } catch (error) {
+    console.error("Daily charges save error:", error);
+    setChargesSheetStatus("Cloud save blocked. Trade update permission needed.", "error");
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.textContent = oldButtonText || "Save";
+    }
+  }
+}
+
+async function removeDailyCharge(dateKey, button = null) {
+  const input = document.getElementById(`charge-${dateKey}`);
+  if (input) input.value = "";
+  await saveDailyCharge(dateKey, button);
+}
+
+function refreshFinancialViews() {
+  updateDashboard();
+  updateAdvancedAnalytics();
+  updateMonthlyDashboard();
+  updateMonthlyTargetWidget();
+  updateAccountCapitalWidget();
+  renderChargesSheet();
+  updateEquityCurve();
+  updateCalendarHeatmap();
+  updateDailyPnlChart();
+  updatePeriodSummary();
+  renderTradeHistory();
+}
+
+window.saveDailyCharge = saveDailyCharge;
+window.removeDailyCharge = removeDailyCharge;
 
 function setBlogStatus(message = "", type = "") {
   const status = document.getElementById("blogStatus");
@@ -1296,6 +1701,7 @@ window.loginUser = async function () {
     setLoginStatus("Checking account and loading trades...", "info");
     const userCredential = await signInWithEmailAndPassword(auth, credentials.email, credentials.password);
     await loadUserProfile(userCredential.user);
+    await loadDailyChargesFromFirebase(userCredential.user);
 
 await loadTradesFromFirebase();
 await loadBlogPostsFromFirebase();
@@ -1326,6 +1732,7 @@ onAuthStateChanged(auth, async (user) => {
 
   if (user) {
     await loadUserProfile(user);
+    await loadDailyChargesFromFirebase(user);
     setAppMode(user);
     loginBtn.textContent = "Logout";
     loginBtn.title = user.email || "Logged in";
@@ -1449,10 +1856,6 @@ document.getElementById("tradeDirection")
 ?.addEventListener("change", updateTradePreview);
 document.getElementById("tradeSegment")
 ?.addEventListener("change", updateTradePreview);
-document.getElementById("chargesMode")
-?.addEventListener("change", updateTradePreview);
-document.getElementById("manualCharges")
-?.addEventListener("input", updateTradePreview);
 function calculateRR() {
 
   const entry =
@@ -1481,89 +1884,14 @@ function calculateRR() {
     `1 : ${(reward / risk).toFixed(2)}`;
 }
 
-function calculateTradePnl(entry, exit, qty) {
+function calculateTradePnl(entry, exit, qty, direction = "Long") {
   if (!entry || !exit || !qty) return 0;
-  return (exit - entry) * qty;
+  const isShort = String(direction || "").toLowerCase() === "short";
+  return (isShort ? entry - exit : exit - entry) * qty;
 }
 
 function roundCharge(value) {
   return Math.round((Number(value) || 0) * 100) / 100;
-}
-
-function calculateTradeCharges({ entry, exit, qty, segment, mode, manualCharges }) {
-  const empty = {
-    mode: mode || "auto",
-    brokerage: 0,
-    stt: 0,
-    exchangeTxn: 0,
-    sebi: 0,
-    gst: 0,
-    stampDuty: 0,
-    total: 0,
-    pointsToBreakeven: 0
-  };
-
-  if (!entry || !exit || !qty) return empty;
-
-  if (mode === "none") return empty;
-
-  if (mode === "manual") {
-    const total = Math.max(0, roundCharge(manualCharges));
-    return {
-      ...empty,
-      mode: "manual",
-      total,
-      pointsToBreakeven: qty ? roundCharge(total / qty) : 0
-    };
-  }
-
-  const buyValue = entry * qty;
-  const sellValue = exit * qty;
-  const turnover = buyValue + sellValue;
-  const normalizedSegment = String(segment || "Options").toLowerCase();
-  const isOptions = normalizedSegment.includes("option");
-  const isFutures = normalizedSegment.includes("future");
-  const isEquity = normalizedSegment.includes("equity") || normalizedSegment.includes("stock");
-  const brokerage = isOptions
-    ? 40
-    : Math.min(20, buyValue * 0.0003) + Math.min(20, sellValue * 0.0003);
-  const sttRate = isOptions ? 0.0015 : isFutures ? 0.0005 : 0.00025;
-  const exchangeRate = isOptions ? 0.0003553 : isFutures ? 0.0000183 : 0.0000307;
-  const stampRate = isFutures ? 0.00002 : 0.00003;
-  const stt = sellValue * sttRate;
-  const exchangeTxn = turnover * exchangeRate;
-  const sebi = turnover * 0.000001;
-  const stampDuty = buyValue * stampRate;
-  const gst = (brokerage + exchangeTxn + sebi) * 0.18;
-  const total = roundCharge(brokerage + stt + exchangeTxn + sebi + gst + stampDuty);
-
-  return {
-    mode: "auto",
-    brokerModel: "Zerodha-style NSE estimate",
-    segmentType: isOptions ? "Options" : isFutures ? "Futures" : isEquity ? "Equity Intraday" : "Generic",
-    brokerage: roundCharge(brokerage),
-    stt: roundCharge(stt),
-    exchangeTxn: roundCharge(exchangeTxn),
-    sebi: roundCharge(sebi),
-    gst: roundCharge(gst),
-    stampDuty: roundCharge(stampDuty),
-    total,
-    pointsToBreakeven: qty ? roundCharge(total / qty) : 0
-  };
-}
-
-function renderChargesBreakdown(charges) {
-  const box = document.getElementById("previewChargesBreakdown");
-  if (!box) return;
-
-  box.innerHTML = `
-    <span>Brokerage</span><strong>${money(charges.brokerage)}</strong>
-    <span>STT</span><strong>${money(charges.stt)}</strong>
-    <span>Exchange + SEBI</span><strong>${money(charges.exchangeTxn + charges.sebi)}</strong>
-    <span>GST</span><strong>${money(charges.gst)}</strong>
-    <span>Stamp Duty</span><strong>${money(charges.stampDuty)}</strong>
-    <span>Breakeven Cost</span><strong>${charges.pointsToBreakeven.toFixed(2)} pts</strong>
-  `;
 }
 
 function updateTradePreview() {
@@ -1572,33 +1900,19 @@ function updateTradePreview() {
   const target = Number(document.getElementById("tradeTarget").value);
   const exit = Number(document.getElementById("tradeExit").value);
   const qty = Number(document.getElementById("tradeQty").value);
-  const segment = document.getElementById("tradeSegment").value;
-  const chargesMode = document.getElementById("chargesMode")?.value || "auto";
-  const manualCharges = Number(document.getElementById("manualCharges")?.value || 0);
+  const direction = document.getElementById("tradeDirection").value;
 
   calculateRR();
 
   const risk = entry && sl && qty ? Math.abs(entry - sl) * qty : 0;
   const reward = entry && target && qty ? Math.abs(target - entry) * qty : 0;
-  const grossPnl = calculateTradePnl(entry, exit, qty);
-  const charges = calculateTradeCharges({ entry, exit, qty, segment, mode: chargesMode, manualCharges });
-  const pnl = roundCharge(grossPnl - charges.total);
-  const capitalSnapshot = getCapitalSnapshot();
-  const existingTrade = editingTradeId ? trades.find((trade) => trade.id === editingTradeId) : null;
-  const existingPnl = existingTrade ? getTradePnl(existingTrade) : 0;
-  const capitalAfterTrade = capitalSnapshot.startingCapital
-    ? capitalSnapshot.currentCapital - existingPnl + pnl
-    : null;
+  const pnl = roundCharge(calculateTradePnl(entry, exit, qty, direction));
 
-  safeText("previewGrossPnl", money(grossPnl));
-  safeText("previewTotalCharges", money(charges.total));
   safeText("previewPnl", money(pnl));
-  safeText("previewCapitalAfterTrade", capitalAfterTrade === null ? "Set capital" : money(capitalAfterTrade));
   safeText("previewRisk", money(risk));
   safeText("previewReward", money(reward));
   safeText("previewRR", risk ? `1 : ${(reward / risk).toFixed(2)}` : "0 : 0");
-  safeText("previewPnlMode", "Gross - Charges");
-  renderChargesBreakdown(charges);
+  safeText("previewPnlMode", direction === "Short" ? "Entry - Exit" : "Exit - Entry");
 }
 function toggleOptionFields() {
   const segment = document.getElementById("tradeSegment").value;
@@ -1736,18 +2050,8 @@ if (!tradeDate || !entry || !exit || !qty || !direction) {
 }
 
  const finalQty = qty;
- const grossPnl = calculateTradePnl(entry, exit, finalQty);
- const chargesMode = document.getElementById("chargesMode")?.value || "auto";
- const manualCharges = Number(document.getElementById("manualCharges")?.value || 0);
- const charges = calculateTradeCharges({
-   entry,
-   exit,
-   qty: finalQty,
-   segment,
-   mode: chargesMode,
-   manualCharges
- });
- const pnl = roundCharge(grossPnl - charges.total);
+ const grossPnl = roundCharge(calculateTradePnl(entry, exit, finalQty, direction));
+ const pnl = grossPnl;
 
   const trade = {
     date: tradeDate,
@@ -1793,12 +2097,8 @@ plan: Number(document.getElementById("planRating").value),
 sl: Number(document.getElementById("slRating").value),
 emotion: Number(document.getElementById("emotionRating").value),
 risk: Number(document.getElementById("riskRating").value),
-entryRating: Number(document.getElementById("entryRating").value),
+    entryRating: Number(document.getElementById("entryRating").value),
     grossPnl,
-    chargesMode,
-    manualCharges: chargesMode === "manual" ? charges.total : 0,
-    chargesTotal: charges.total,
-    chargesBreakdown: charges,
     netPnl: pnl,
     pnl: pnl,
     rules: document.getElementById("rulesFollowed").checked,
@@ -1823,6 +2123,10 @@ if (!user) {
       doc(db, "users", user.uid, "trades", editingTradeId),
       {
         ...trade,
+        chargesMode: deleteField(),
+        manualCharges: deleteField(),
+        chargesTotal: deleteField(),
+        chargesBreakdown: deleteField(),
         updatedAt: serverTimestamp()
       }
     );
@@ -1871,6 +2175,7 @@ return;
   updatePsychologyVerdict();
   updateMonthlyTargetWidget();
   updateAccountCapitalWidget();
+  renderChargesSheet();
  showProcessWarning(trade);
 resetTradeForm();
 document.getElementById("entryReason").value = "";
@@ -1942,7 +2247,7 @@ function calculateMaxDrawdown(tradeList) {
   let maxDrawdown = 0;
 
   tradeList.forEach((trade) => {
-    running += Number(trade.pnl) || 0;
+    running += getTradePnl(trade);
     peak = Math.max(peak, running);
     maxDrawdown = Math.min(maxDrawdown, running - peak);
   });
@@ -1977,18 +2282,18 @@ function updatePeriodSummary() {
   });
 
   const makeStats = (tradeList) => {
-    const pnl = tradeList.reduce((sum, trade) => sum + (Number(trade.pnl) || 0), 0);
-    const wins = tradeList.filter((trade) => Number(trade.pnl) > 0).length;
-    const losses = tradeList.filter((trade) => Number(trade.pnl) < 0).length;
+    const pnl = getRemainingPnlForTradeList(tradeList);
+    const wins = tradeList.filter((trade) => getTradePnl(trade) > 0).length;
+    const losses = tradeList.filter((trade) => getTradePnl(trade) < 0).length;
     const winRate = tradeList.length ? Math.round((wins / tradeList.length) * 100) : 0;
     const avgTrade = tradeList.length ? pnl / tradeList.length : 0;
     const grossProfit = tradeList
-      .filter((trade) => Number(trade.pnl) > 0)
-      .reduce((sum, trade) => sum + (Number(trade.pnl) || 0), 0);
+      .filter((trade) => getTradePnl(trade) > 0)
+      .reduce((sum, trade) => sum + getTradePnl(trade), 0);
     const grossLoss = Math.abs(
       tradeList
-        .filter((trade) => Number(trade.pnl) < 0)
-        .reduce((sum, trade) => sum + (Number(trade.pnl) || 0), 0)
+        .filter((trade) => getTradePnl(trade) < 0)
+        .reduce((sum, trade) => sum + getTradePnl(trade), 0)
     );
     const profitFactor = grossLoss ? grossProfit / grossLoss : grossProfit > 0 ? Infinity : 0;
     return {
@@ -2014,10 +2319,8 @@ function updatePeriodSummary() {
   safeText("monthMaxDrawdown", money(month.maxDrawdown));
 
   const dayStats = {};
-  monthTrades.forEach((trade) => {
-    const dateKey = getTradeDateKey(trade);
-    if (!dateKey) return;
-    dayStats[dateKey] = (dayStats[dateKey] || 0) + (Number(trade.pnl) || 0);
+  Object.values(buildDailyPnlRows(monthTrades)).forEach((row) => {
+    dayStats[row.dateKey] = row.netPnl;
   });
 
   const sortedDays = Object.entries(dayStats).sort((a, b) => b[1] - a[1]);
@@ -2072,26 +2375,24 @@ function updateMonthlyDashboard() {
   });
 
   const monthTrades = monthlyTrades.length;
-  const monthPnl = monthlyTrades.reduce((sum, trade) => sum + (Number(trade.pnl) || 0), 0);
-  const wins = monthlyTrades.filter((trade) => trade.pnl > 0);
-  const losses = monthlyTrades.filter((trade) => trade.pnl < 0);
+  const monthPnl = getRemainingPnlForTradeList(monthlyTrades);
+  const wins = monthlyTrades.filter((trade) => getTradePnl(trade) > 0);
+  const losses = monthlyTrades.filter((trade) => getTradePnl(trade) < 0);
 
   const monthWinRate = monthTrades ? Math.round((wins.length / monthTrades) * 100) : 0;
   const avgTrade = monthTrades ? monthPnl / monthTrades : 0;
-  const avgWinner = wins.length ? wins.reduce((sum, trade) => sum + trade.pnl, 0) / wins.length : 0;
-  const avgLoser = losses.length ? losses.reduce((sum, trade) => sum + trade.pnl, 0) / losses.length : 0;
+  const avgWinner = wins.length ? wins.reduce((sum, trade) => sum + getTradePnl(trade), 0) / wins.length : 0;
+  const avgLoser = losses.length ? losses.reduce((sum, trade) => sum + getTradePnl(trade), 0) / losses.length : 0;
 
-  const grossProfit = wins.reduce((sum, trade) => sum + trade.pnl, 0);
-  const grossLoss = Math.abs(losses.reduce((sum, trade) => sum + trade.pnl, 0));
+  const grossProfit = wins.reduce((sum, trade) => sum + getTradePnl(trade), 0);
+  const grossLoss = Math.abs(losses.reduce((sum, trade) => sum + getTradePnl(trade), 0));
   const profitFactor = grossLoss ? grossProfit / grossLoss : grossProfit > 0 ? grossProfit : 0;
 
   const dayStats = {};
 
-  monthlyTrades.forEach((trade) => {
-    const tradeDay = getTradeDateKey(trade);
-    if (!tradeDay) return;
-    if (!dayStats[tradeDay]) dayStats[tradeDay] = 0;
-    dayStats[tradeDay] += getTradePnl(trade);
+  Object.values(buildDailyPnlRows(monthlyTrades)).forEach((row) => {
+    if (!row.dateKey) return;
+    dayStats[row.dateKey] = row.netPnl;
   });
 
   let bestDay = "No Data";
@@ -2128,10 +2429,11 @@ function updateMonthlyDashboard() {
   let currentLossStreak = 0;
 
   monthlyTrades.forEach((trade) => {
-    if (trade.pnl > 0) {
+    const tradePnl = getTradePnl(trade);
+    if (tradePnl > 0) {
       currentWinStreak++;
       currentLossStreak = 0;
-    } else if (trade.pnl < 0) {
+    } else if (tradePnl < 0) {
       currentLossStreak++;
       currentWinStreak = 0;
     } else {
@@ -2242,14 +2544,14 @@ function updatePsychologyVerdict() {
 }
 function updateDashboard() {
   const totalTrades = trades.length;
-  const totalPnl = trades.reduce((sum, trade) => sum + trade.pnl, 0);
-  const wins = trades.filter((trade) => trade.pnl > 0).length;
+  const totalPnl = getRemainingPnlForTradeList(trades);
+  const wins = trades.filter((trade) => getTradePnl(trade) > 0).length;
   const rulesFollowed = trades.filter((trade) => trade.rules).length;
 
   const winRate = totalTrades ? Math.round((wins / totalTrades) * 100) : 0;
   const rulesRate = totalTrades ? Math.round((rulesFollowed / totalTrades) * 100) : 0;
 
-  const pnls = trades.map((trade) => trade.pnl);
+  const pnls = trades.map((trade) => getTradePnl(trade));
   const bestTrade = pnls.length ? Math.max(...pnls) : 0;
   const worstTrade = pnls.length ? Math.min(...pnls) : 0;
 
@@ -2288,9 +2590,10 @@ trades.forEach((trade) => {
   }
 
   setupStats[setup].trades++;
-  setupStats[setup].pnl += trade.pnl;
+  const tradePnl = getTradePnl(trade);
+  setupStats[setup].pnl += tradePnl;
 
-  if (trade.pnl > 0) {
+  if (tradePnl > 0) {
     setupStats[setup].wins++;
   }
 });
@@ -2404,10 +2707,11 @@ trades.forEach((trade) => {
 
   if (!slot) return;
 
+  const tradePnl = getTradePnl(trade);
   timeStats[slot].trades++;
-  timeStats[slot].pnl += trade.pnl;
+  timeStats[slot].pnl += tradePnl;
 
-  if (trade.pnl > 0) {
+  if (tradePnl > 0) {
     timeStats[slot].wins++;
   }
 });
@@ -2483,8 +2787,9 @@ trades.forEach((trade) => {
       mistakeCosts[trade.mistake] = 0;
     }
 
-    if (trade.pnl < 0) {
-      mistakeCosts[trade.mistake] += Math.abs(trade.pnl);
+    const tradePnl = getTradePnl(trade);
+    if (tradePnl < 0) {
+      mistakeCosts[trade.mistake] += Math.abs(tradePnl);
     }
 
   }
@@ -2529,7 +2834,7 @@ if (sortedMistakes.length === 0) {
 
 }
 function classifyTrade(trade) {
-  const isWin = trade.pnl > 0;
+  const isWin = getTradePnl(trade) > 0;
   const goodProcess =
     trade.rules &&
     trade.disciplineScore >= 18 &&
@@ -2573,35 +2878,306 @@ function showProcessWarning(trade) {
     warningBox.className = "process-warning danger";
   }
 }
-function updateCalendarHeatmap() {
-  const box = document.getElementById("calendarHeatmap");
-  if (!box) return;
 
+function getSafeCalendarDate() {
+  return calendarViewDate instanceof Date && !Number.isNaN(calendarViewDate.getTime())
+    ? calendarViewDate
+    : new Date();
+}
+
+function getActivityMonthKey(year, month) {
+  return `${year}-${String(month + 1).padStart(2, "0")}`;
+}
+
+function getActivityMonthLabel(year, month, style = "long") {
+  return new Date(year, month, 1).toLocaleString("en-US", {
+    month: style,
+    year: "numeric"
+  });
+}
+
+function getActivityMonths(startYear, startMonth, count) {
+  return Array.from({ length: count }, (_, index) => {
+    const date = new Date(startYear, startMonth + index, 1);
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    return {
+      year,
+      month,
+      key: getActivityMonthKey(year, month),
+      label: getActivityMonthLabel(year, month),
+      shortLabel: date.toLocaleString("en-US", { month: "short" })
+    };
+  });
+}
+
+function getFinancialYearStartYear(offset = 0) {
   const now = new Date();
-  const year = now.getFullYear();
-  const month = now.getMonth();
+  const startYear = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+  return startYear + offset;
+}
+
+function getActivityViewMonths() {
+  const base = getSafeCalendarDate();
+  const baseYear = base.getFullYear();
+  const baseMonth = base.getMonth();
+
+  if (activityViewMode === "last3") {
+    return {
+      title: "Last 3 Months",
+      meta: "Rolling view ending with selected month",
+      months: getActivityMonths(baseYear, baseMonth - 2, 3)
+    };
+  }
+
+  if (activityViewMode === "last12") {
+    return {
+      title: "Last 1 Year",
+      meta: "12 month P&L snapshot",
+      months: getActivityMonths(baseYear, baseMonth - 11, 12)
+    };
+  }
+
+  if (activityViewMode === "thisFy") {
+    const startYear = getFinancialYearStartYear(0);
+    return {
+      title: `FY ${startYear}-${String(startYear + 1).slice(-2)}`,
+      meta: "April to March",
+      months: getActivityMonths(startYear, 3, 12)
+    };
+  }
+
+  if (activityViewMode === "lastFy") {
+    const startYear = getFinancialYearStartYear(-1);
+    return {
+      title: `FY ${startYear}-${String(startYear + 1).slice(-2)}`,
+      meta: "Last financial year",
+      months: getActivityMonths(startYear, 3, 12)
+    };
+  }
+
+  return {
+    title: getActivityMonthLabel(baseYear, baseMonth),
+    meta: "Daily trade activity",
+    months: getActivityMonths(baseYear, baseMonth, 1)
+  };
+}
+
+function getActivityMonthStats(months) {
+  const stats = {};
+  const allowedKeys = new Set(months.map((item) => item.key));
+
+  months.forEach((month) => {
+    stats[month.key] = {
+      pnl: 0,
+      grossPnl: 0,
+      charges: 0,
+      trades: 0,
+      greenDays: 0,
+      redDays: 0
+    };
+  });
+
+  Object.values(buildDailyPnlRows(trades)).forEach((row) => {
+    const date = getDateFromDateKey(row.dateKey);
+    if (!date) return;
+
+    const key = getActivityMonthKey(date.getFullYear(), date.getMonth());
+    if (!allowedKeys.has(key)) return;
+
+    stats[key].pnl += row.netPnl;
+    stats[key].grossPnl += row.grossPnl;
+    stats[key].charges += row.charges;
+    stats[key].trades += row.trades;
+
+    if (row.netPnl > 0) stats[key].greenDays++;
+    if (row.netPnl < 0) stats[key].redDays++;
+  });
+
+  Object.values(stats).forEach((item) => {
+    item.pnl = roundCharge(item.pnl);
+    item.grossPnl = roundCharge(item.grossPnl);
+    item.charges = roundCharge(item.charges);
+  });
+
+  return stats;
+}
+
+function getActivityIntensity(value, maxAbsValue) {
+  if (!value) return 0;
+  return Math.max(1, Math.min(4, Math.ceil((Math.abs(value) / Math.max(maxAbsValue, 1)) * 4)));
+}
+
+function getActivityViewSelect() {
+  const currentLabel = ACTIVITY_VIEW_MODES.find(([mode]) => mode === activityViewMode)?.[1] || "Month";
+
+  return `
+    <div class="activity-view-control">
+      <span class="activity-view-label">View</span>
+      <div class="activity-view-dropdown ${activityViewMenuOpen ? "open" : ""}">
+        <button type="button" class="activity-view-trigger" onclick="toggleActivityViewMenu(event)" aria-haspopup="listbox" aria-expanded="${activityViewMenuOpen}">
+          <span>${currentLabel}</span>
+          <span class="activity-view-chevron">v</span>
+        </button>
+        <div class="activity-view-menu" role="listbox">
+          ${ACTIVITY_VIEW_MODES.map(([mode, label]) => `
+            <button type="button" class="activity-view-option ${activityViewMode === mode ? "active" : ""}" onclick="setActivityViewMode('${mode}')" role="option" aria-selected="${activityViewMode === mode}">
+              ${label}
+            </button>
+          `).join("")}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function toggleActivityViewMenu(event) {
+  if (event?.stopPropagation) event.stopPropagation();
+  activityViewMenuOpen = !activityViewMenuOpen;
+  updateCalendarHeatmap();
+}
+
+function closeActivityViewMenu() {
+  if (!activityViewMenuOpen) return;
+  activityViewMenuOpen = false;
+  updateCalendarHeatmap();
+}
+
+document.addEventListener("click", (event) => {
+  if (!activityViewMenuOpen) return;
+  if (event.target?.closest?.(".activity-view-dropdown")) return;
+  closeActivityViewMenu();
+});
+
+function setActivityViewMode(mode = "month") {
+  activityViewMode = isAllowedActivityViewMode(mode) ? mode : "month";
+  activityViewMenuOpen = false;
+  try {
+    localStorage.setItem(ACTIVITY_VIEW_MODE_KEY, activityViewMode);
+  } catch (error) {
+    // Local storage can be unavailable in strict browser modes.
+  }
+  updateCalendarHeatmap();
+}
+
+function changeCalendarMonth(delta = 0) {
+  const current = getSafeCalendarDate();
+  calendarViewDate = new Date(current.getFullYear(), current.getMonth() + Number(delta || 0), 1);
+  activityViewMode = "month";
+  activityViewMenuOpen = false;
+  try {
+    localStorage.setItem(ACTIVITY_VIEW_MODE_KEY, activityViewMode);
+  } catch (error) {
+    // Local storage can be unavailable in strict browser modes.
+  }
+  updateCalendarHeatmap();
+}
+
+function openActivityMonth(monthKey) {
+  const [year, month] = String(monthKey || "").split("-").map(Number);
+  if (!year || !month) return;
+
+  calendarViewDate = new Date(year, month - 1, 1);
+  activityViewMode = "month";
+  activityViewMenuOpen = false;
+  try {
+    localStorage.setItem(ACTIVITY_VIEW_MODE_KEY, activityViewMode);
+  } catch (error) {
+    // Local storage can be unavailable in strict browser modes.
+  }
+  updateCalendarHeatmap();
+}
+
+function renderActivityHeader(title, meta, summary, showMonthNav = false) {
+  return `
+    <div class="activity-calendar-head">
+      <div class="activity-head-copy">
+        <div class="activity-title-stack">
+          <div class="activity-month-toolbar ${showMonthNav ? "" : "no-nav"}">
+            ${showMonthNav ? `<button type="button" class="calendar-month-btn" onclick="changeCalendarMonth(-1)" aria-label="Previous month">&lt;</button>` : ""}
+            <h4>${title}</h4>
+            ${showMonthNav ? `<button type="button" class="calendar-month-btn" onclick="changeCalendarMonth(1)" aria-label="Next month">&gt;</button>` : ""}
+          </div>
+          <p>${summary || meta}</p>
+        </div>
+      </div>
+      <div class="activity-head-tools">
+        ${getActivityViewSelect()}
+        <div class="activity-legend">
+          <span class="legend-profit"></span> Profit
+          <span class="legend-loss"></span> Loss
+          <span class="legend-flat"></span> No data
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderActivityPeriodView() {
+  const view = getActivityViewMonths();
+  const stats = getActivityMonthStats(view.months);
+  const maxAbsPnl = Math.max(...Object.values(stats).map((item) => Math.abs(item.pnl)), 1);
+  const totalTrades = Object.values(stats).reduce((sum, item) => sum + item.trades, 0);
+  const totalPnl = Object.values(stats).reduce((sum, item) => sum + item.pnl, 0);
+  const activeMonths = Object.values(stats).filter((item) => item.trades > 0).length;
+  const summary = `${view.meta} | ${totalTrades} trades | ${money(totalPnl)} total P&L | ${activeMonths}/${view.months.length} active months`;
+
+  const cards = view.months.map((month) => {
+    const stat = stats[month.key];
+    const hasData = stat.trades > 0;
+    const intensity = getActivityIntensity(stat.pnl, maxAbsPnl);
+    const type = !hasData ? "empty" : stat.pnl >= 0 ? "profit" : "loss";
+    const cls = `activity-month-card ${type}${hasData ? ` level-${intensity}` : ""}`;
+    const tooltip = hasData
+      ? `${month.label}: ${stat.trades} trades | P&L ${money(stat.pnl)} | Charges ${money(stat.charges)} | Green days ${stat.greenDays} | Red days ${stat.redDays}`
+      : `${month.label}: No data`;
+
+    return `
+      <button type="button" class="${cls}" title="${escapeHtml(tooltip)}" data-tooltip="${escapeHtml(tooltip)}" onclick="openActivityMonth('${month.key}')">
+        <span>${month.shortLabel}</span>
+        <small>${month.year}</small>
+        <strong>${hasData ? money(stat.pnl) : "No data"}</strong>
+        <em>${hasData ? `${stat.trades} trade${stat.trades > 1 ? "s" : ""}` : "Blank month"}</em>
+      </button>
+    `;
+  }).join("");
+
+  return `
+    <div class="activity-calendar">
+      ${renderActivityHeader(view.title, view.meta, summary, false)}
+      <div class="activity-period-grid ${view.months.length <= 3 ? "short-range" : ""}">
+        ${cards}
+      </div>
+    </div>
+  `;
+}
+
+function renderActivityMonthView() {
+  const viewDate = getSafeCalendarDate();
+  const year = viewDate.getFullYear();
+  const month = viewDate.getMonth();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const firstDay = new Date(year, month, 1).getDay();
-  const monthName = now.toLocaleString("en-US", { month: "long", year: "numeric" });
+  const monthName = getActivityMonthLabel(year, month);
 
+  const monthTrades = trades.filter((trade) => {
+    const d = getDateFromDateKey(getTradeDateKey(trade));
+    return d && d.getMonth() === month && d.getFullYear() === year;
+  });
+  const dailyRows = buildDailyPnlRows(monthTrades);
   const dayStats = {};
 
-  trades.forEach((trade) => {
-    const d = getDateFromDateKey(getTradeDateKey(trade));
+  Object.values(dailyRows).forEach((row) => {
+    const d = getDateFromDateKey(row.dateKey);
     if (!d) return;
-    if (d.getMonth() !== month || d.getFullYear() !== year) return;
-
     const day = d.getDate();
 
-    if (!dayStats[day]) {
-      dayStats[day] = {
-        pnl: 0,
-        trades: 0
-      };
-    }
-
-    dayStats[day].pnl += getTradePnl(trade);
-    dayStats[day].trades++;
+    dayStats[day] = {
+      pnl: row.netPnl,
+      grossPnl: row.grossPnl,
+      charges: row.charges,
+      trades: row.trades
+    };
   });
 
   const pnlValues = Object.values(dayStats).map((day) => Math.abs(day.pnl));
@@ -2621,9 +3197,9 @@ function updateCalendarHeatmap() {
     let details = `<span>No trade</span>`;
 
     if (data) {
-      const intensity = Math.max(1, Math.min(4, Math.ceil((Math.abs(data.pnl) / maxAbsPnl) * 4)));
+      const intensity = getActivityIntensity(data.pnl, maxAbsPnl);
       cls = `activity-day ${data.pnl >= 0 ? "profit" : "loss"} level-${intensity}`;
-      info = `${displayDate}: ${data.trades} trade${data.trades > 1 ? "s" : ""} | P&L ${money(data.pnl)}`;
+      info = `${displayDate}: ${data.trades} trade${data.trades > 1 ? "s" : ""} | Gross ${money(data.grossPnl)} | Charges ${money(data.charges)} | Remaining ${money(data.pnl)}`;
       details = `<span>${data.trades} trade${data.trades > 1 ? "s" : ""}</span><strong>${money(data.pnl)}</strong>`;
     }
 
@@ -2644,19 +3220,9 @@ function updateCalendarHeatmap() {
   const monthlyPnl = Object.values(dayStats).reduce((sum, day) => sum + day.pnl, 0);
   const monthlyTrades = Object.values(dayStats).reduce((sum, day) => sum + day.trades, 0);
 
-  box.innerHTML = `
+  return `
     <div class="activity-calendar">
-      <div class="activity-calendar-head">
-        <div>
-          <h4>${monthName}</h4>
-          <p>${monthlyTrades} trades | ${money(monthlyPnl)} monthly P&L</p>
-        </div>
-        <div class="activity-legend">
-          <span class="legend-profit"></span> Profit
-          <span class="legend-loss"></span> Loss
-          <span class="legend-flat"></span> No trade
-        </div>
-      </div>
+      ${renderActivityHeader(monthName, "Daily trade activity", `${monthlyTrades} trades | ${money(monthlyPnl)} monthly P&L`, true)}
       <div class="activity-weekdays">
         ${weekdays.map((day) => `<span>${day}</span>`).join("")}
       </div>
@@ -2665,6 +3231,13 @@ function updateCalendarHeatmap() {
       </div>
     </div>
   `;
+}
+
+function updateCalendarHeatmap() {
+  const box = document.getElementById("calendarHeatmap");
+  if (!box) return;
+
+  box.innerHTML = activityViewMode === "month" ? renderActivityMonthView() : renderActivityPeriodView();
 }
 function updateEquityCurve() {
   const chart = document.getElementById("equityCurve");
@@ -2690,7 +3263,15 @@ function updateEquityCurve() {
     label: trade.symbol || "Trade"
   }));
 
-  const events = [...capitalEvents, ...tradeEvents].sort((a, b) => a.date - b.date);
+  const chargeEvents = Object.values(buildDailyPnlRows(orderedTrades))
+    .filter((row) => row.charges > 0)
+    .map((row) => ({
+      date: new Date(`${row.dateKey}T23:59`).getTime() || 0,
+      amount: -row.charges,
+      label: "Charges"
+    }));
+
+  const events = [...capitalEvents, ...tradeEvents, ...chargeEvents].sort((a, b) => a.date - b.date);
 
   if (!capital.startingCapital && !events.length) {
     chart.innerHTML = `<text x="250" y="112" text-anchor="middle" class="chart-empty-label">Set capital or add trades to build curve</text>`;
@@ -2790,11 +3371,8 @@ function updateDailyPnlChart() {
   }
 
   const dayStats = {};
-
-  trades.forEach((trade) => {
-    const tradeDay = getTradeDateKey(trade);
-    if (!tradeDay) return;
-    dayStats[tradeDay] = (dayStats[tradeDay] || 0) + getTradePnl(trade);
+  Object.values(buildDailyPnlRows(trades)).forEach((row) => {
+    dayStats[row.dateKey] = row.netPnl;
   });
 
   const entries = Object.entries(dayStats).sort((a, b) => new Date(a[0]) - new Date(b[0])).slice(-14);
@@ -2958,7 +3536,8 @@ function updateTradeReplay(trade) {
     return;
   }
   const tradeClass = classifyTrade(trade);
-  const pnlClass = trade.pnl >= 0 ? "profit" : "loss";
+  const tradePnl = getTradePnl(trade);
+  const pnlClass = tradePnl >= 0 ? "profit" : "loss";
 
   replay.innerHTML = `
     <div class="replay-card">
@@ -2974,7 +3553,7 @@ function updateTradeReplay(trade) {
       <p>
         Result:
         <strong class="${pnlClass}">
-          ₹${trade.pnl.toFixed(2)}
+          ${money(tradePnl)}
         </strong>
       </p>
 
@@ -3085,7 +3664,6 @@ function renderTradeHistory() {
 
   filteredTrades.slice(0, 20).forEach((trade) => {
     const tradePnl = getTradePnl(trade);
-    const chargesTotal = getTradeChargesTotal(trade);
     const pnlClass = tradePnl >= 0 ? "profit" : "loss";
 
     history.innerHTML += `
@@ -3102,7 +3680,6 @@ function renderTradeHistory() {
         <div>${money(trade.targetPrice)}</div>
         <div class="pnl-cell ${pnlClass}">
           <strong>${money(tradePnl)}</strong>
-          ${chargesTotal ? `<small>Charges ${money(chargesTotal)}</small>` : ""}
         </div>
         <div>${trade.rrRatio || "0 : 0"}</div>
         <div>${getMistakeText(trade)}</div>
@@ -3144,10 +3721,8 @@ function openTradeDetail(tradeId) {
 
   if (!trade || !modal || !content) return;
 
-  const netPnl = getTradePnl(trade);
-  const grossPnl = getTradeGrossPnl(trade);
-  const chargesTotal = getTradeChargesTotal(trade);
-  const pnlClass = netPnl >= 0 ? "profit" : "loss";
+  const tradePnl = getTradePnl(trade);
+  const pnlClass = tradePnl >= 0 ? "profit" : "loss";
 
   content.innerHTML = `
     <h3>${trade.symbol || "N/A"} <span>${trade.segment || "N/A"}</span></h3>
@@ -3161,24 +3736,10 @@ function openTradeDetail(tradeId) {
       <div><span>Target</span><strong>${money(trade.targetPrice)}</strong></div>
       <div><span>Exit</span><strong>${money(trade.exit)}</strong></div>
       <div><span>Qty</span><strong>${trade.qty || 0}</strong></div>
-      <div><span>Gross P&L</span><strong>${money(grossPnl)}</strong></div>
-      <div><span>Charges</span><strong>${money(chargesTotal)}</strong></div>
-      <div><span>Net P&L</span><strong class="${pnlClass}">${money(netPnl)}</strong></div>
+      <div><span>Trade P&L</span><strong class="${pnlClass}">${money(tradePnl)}</strong></div>
       <div><span>R:R</span><strong>${trade.rrRatio || "0 : 0"}</strong></div>
       <div><span>Rules</span><strong>${trade.rules ? "Yes" : "No"}</strong></div>
     </div>
-    ${chargesTotal ? `
-      <div class="detail-note">
-        <strong>Charges Breakdown</strong>
-        <p>
-          Brokerage ${money(trade.chargesBreakdown?.brokerage || 0)} |
-          STT ${money(trade.chargesBreakdown?.stt || 0)} |
-          Exchange + SEBI ${money((trade.chargesBreakdown?.exchangeTxn || 0) + (trade.chargesBreakdown?.sebi || 0))} |
-          GST ${money(trade.chargesBreakdown?.gst || 0)} |
-          Stamp ${money(trade.chargesBreakdown?.stampDuty || 0)}
-        </p>
-      </div>
-    ` : ""}
     <div class="detail-note">
       <strong>Mistakes</strong>
       <p>${getMistakeText(trade)}</p>
@@ -3200,7 +3761,7 @@ function exportTradesCSV() {
     return;
   }
 
-  let csv = "Date,Time,Symbol,Segment,Direction,Entry,SL,Target,Exit,Quantity,RR,Setup,Entry Reason,Mistakes,Rules Followed,Trader Score,Trade Quality,Gross PNL,Charges,Net PNL,Note\n";
+  let csv = "Date,Time,Symbol,Segment,Direction,Entry,SL,Target,Exit,Quantity,RR,Setup,Entry Reason,Mistakes,Rules Followed,Trader Score,Trade Quality,Trade PNL,Note\n";
 
   trades.forEach((trade) => {
 csv +=
@@ -3221,8 +3782,6 @@ csv +=
   `${trade.rules ? "Yes" : "No"},` +
   `${(trade.disciplineScore || 0) * 4},` +
   `${trade.tradeQuality || ""},` +
-  `${getTradeGrossPnl(trade)},` +
-  `${getTradeChargesTotal(trade)},` +
   `${getTradePnl(trade)},` +
   `"${trade.note || ""}"\n`;
   });
@@ -3283,8 +3842,6 @@ function editTrade(tradeId) {
     document.getElementById("tradeTarget").value = trade.targetPrice || "";
     document.getElementById("tradeExit").value = trade.exit || "";
     document.getElementById("tradeQty").value = trade.qty || "";
-    document.getElementById("chargesMode").value = trade.chargesMode || "auto";
-    document.getElementById("manualCharges").value = trade.chargesMode === "manual" ? trade.manualCharges || trade.chargesTotal || "" : "";
     document.getElementById("entryReason").value = trade.entryReason || "";
     document.getElementById("tradeSetup").value = trade.setup || "";
     setSelectedValues("tradeMistake", trade.mistakes || trade.mistake || "");
@@ -3316,8 +3873,6 @@ function resetTradeForm() {
   document.getElementById("tradeTarget").value = "";
   document.getElementById("tradeExit").value = "";
   document.getElementById("tradeQty").value = "";
-  document.getElementById("chargesMode").value = "auto";
-  document.getElementById("manualCharges").value = "";
   document.getElementById("tradeSetup").value = "";
   setSelectedValues("tradeMistake", []);
   document.getElementById("rulesFollowed").checked = false;
@@ -3451,6 +4006,10 @@ window.logoutCurrentUser = logoutCurrentUser;
 window.toggleProfileMenu = toggleProfileMenu;
 window.toggleCustomizePanel = toggleCustomizePanel;
 window.setDashboardLayout = setDashboardLayout;
+window.changeCalendarMonth = changeCalendarMonth;
+window.setActivityViewMode = setActivityViewMode;
+window.toggleActivityViewMenu = toggleActivityViewMenu;
+window.openActivityMonth = openActivityMonth;
 // ================= ADVANCED JOURNAL ANALYTICS =================
 
 function updateAdvancedAnalytics() {
@@ -3469,15 +4028,26 @@ function updateAdvancedAnalytics() {
 }
 
 function getTradePnl(trade) {
-  return Number(trade.netPnl ?? trade.pnl ?? trade.profitLoss ?? trade.pl ?? 0);
+  return getTradeGrossPnl(trade);
 }
 
 function getTradeGrossPnl(trade) {
-  return Number(trade.grossPnl ?? trade.profitLoss ?? trade.pl ?? trade.pnl ?? 0);
+  const oldNet = numberFromCurrency(trade?.netPnl);
+  const oldCharges = numberFromCurrency(trade?.chargesTotal ?? trade?.chargesBreakdown?.total);
+  if (trade?.grossPnl !== undefined && trade?.grossPnl !== null && trade?.grossPnl !== "") {
+    return numberFromCurrency(trade.grossPnl);
+  }
+  if (trade?.pnl !== undefined && trade?.pnl !== null && trade?.pnl !== "") {
+    return numberFromCurrency(trade.pnl);
+  }
+  if (oldNet && oldCharges) {
+    return oldNet + oldCharges;
+  }
+  return numberFromCurrency(trade?.profitLoss ?? trade?.pl ?? 0);
 }
 
 function getTradeChargesTotal(trade) {
-  return Number(trade.chargesTotal ?? trade.chargesBreakdown?.total ?? 0);
+  return 0;
 }
 
 function getTradeDateKey(trade) {
